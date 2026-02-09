@@ -1,0 +1,18 @@
+[package]
+name = "router"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+bitcoin = { version = "0.32", features = ["std"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+rusqlite = { version = "0.30", features = ["bundled"] }
+dirs = "5.0"
+prometheus = { version = "0.13", features = ["process"] }
+axum = "0.7"
+chrono = "0.4"
+rand = "0.8"

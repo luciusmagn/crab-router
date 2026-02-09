@@ -1,0 +1,200 @@
+# Crab Router - Bitcoin P2P Topology Explorer
+
+* Overview
+
+Crab Router is an aggressive Bitcoin P2P relay node designed to explore and
+demonstrate network topology resilience. It maintains a very high number of
+peer connections and relays transactions between permissive nodes while
+excluding filtered nodes (Knots) from receiving relayed data.
+
+This project serves as a practical demonstration that mempool-level filtering
+can be circumvented through increased network connectivity, as transactions
+naturally route around filtered nodes through the unfiltered majority.
+
+* Core Concepts
+
+** The Filtering Problem
+
+Bitcoin Knots implements aggressive mempool filtering to reject what it
+considers "spam" transactions (inscriptions, ordinals, large OP_RETURN data).
+However, for filtering to be effective at the mempool level, it would need
+near-universal adoption across all nodes.
+
+As the network demonstrates with sub-1sat/vbyte transactions (rejected by the
+vast majority of nodes but still mined), even a small permissive minority
+creates viable paths for transaction propagation.
+
+** Crab Router's Approach
+
+1. *Aggressive Peering*: Connects to hundreds of nodes simultaneously
+2. *Topology Mapping*: Discovers and classifies nodes (Knots vs Core/Libre)
+3. *Selective Relay*: Accepts from all, relays only to non-Knots
+4. *High Connectivity*: Acts as a bridge between permissive node clusters
+
+* Architecture
+
+** Components
+
+| Component | Purpose |
+|-----------|---------|
+| PeerManager | Maintains target connection count, handles peer lifecycle |
+| DiscoveryService | Crawls network, discovers new nodes, prunes dead ones |
+| AddressDb | SQLite persistence for node addresses and classifications |
+| RelayEngine | Deduplicates and relays transactions to non-Knots |
+| MetricsServer | Prometheus endpoint for Grafana dashboards |
+
+** Relay Rules
+
+- Accept =inv= and =tx= messages from any peer
+- Forward to all *except*:
+  - The originating peer (prevent loops)
+  - Knots nodes (respect their filtering policy)
+- Deduplicate via txid hash cache
+
+** Node Classification
+
+Parsed from version handshake user agent strings:
+
+- */Satoshi:0.x.x/* or */Satoshi:Core/* → Core
+- */Knots:/* → Knots (exclude from relay)
+- */Libre/* → Libre Relay (prioritize)
+
+* Configuration
+
+#+begin_src bash
+cargo run --release -- \
+  --target-peers 1000 \
+  --metrics-addr 0.0.0.0:15444 \
+  --listen-port 8333 \
+  --peer-timeout-secs 10 \
+  --user-agent "/Crab Router:1.0.0/" \
+  --discovery-interval-secs 300
+#+end_src
+
+** CLI Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| =--target-peers= | 1000 | Number of peers to maintain |
+| =--metrics-addr= | 0.0.0.0:15444 | Prometheus metrics endpoint |
+| =--listen-port= | 8333 | Local listening port for inbound peers |
+| =--peer-timeout-secs= | 60 | Timeout for outbound connect and handshake |
+| =--enable-discovery= | true | Enable DNS seeding, getaddr crawl, and addr gossip ingestion |
+| =--discovery-interval-secs= | 300 | How often to run discovery |
+| =--user-agent= | /Crab Router:1.0.0/ | User agent sent in version handshake |
+
+* Metrics
+
+Exposed at =http://127.0.0.1:15444/metrics= (and reachable from Docker via =host.docker.internal:15444=):
+
+| Metric | Type | Example PromQL |
+|--------|------|----------------|
+| =crab_router_connected_peers= | Gauge | =crab_router_connected_peers= |
+| =crab_router_knots_peers= | Gauge | =crab_router_knots_peers= |
+| =crab_router_core_peers= | Gauge | =crab_router_core_peers= |
+| =crab_router_libre_peers= | Gauge | =crab_router_libre_peers= |
+| =crab_router_other_peers= | Gauge | =crab_router_other_peers= |
+| =crab_router_total_connections= | Counter | =rate(crab_router_total_connections[5m])= |
+| =crab_router_total_disconnections= | Counter | =rate(crab_router_total_disconnections[5m])= |
+| =crab_router_transactions_relayed= | Counter | =rate(crab_router_transactions_relayed[5m])= |
+| =crab_router_transactions_received= | Counter | =rate(crab_router_transactions_received[5m])= |
+| =crab_router_transactions_received_from_core= | Counter | =rate(crab_router_transactions_received_from_core[5m])= |
+| =crab_router_transactions_received_from_knots= | Counter | =rate(crab_router_transactions_received_from_knots[5m])= |
+| =crab_router_transactions_received_from_libre= | Counter | =rate(crab_router_transactions_received_from_libre[5m])= |
+| =crab_router_transactions_received_from_other= | Counter | =rate(crab_router_transactions_received_from_other[5m])= |
+| =crab_router_transactions_received_from_unknown= | Counter | =rate(crab_router_transactions_received_from_unknown[5m])= |
+| =crab_router_unclassified_agent_peers{user_agent="..."}= | GaugeVec | =topk(30, crab_router_unclassified_agent_peers)= |
+| =crab_router_inv_messages_received= | Counter | =rate(crab_router_inv_messages_received[5m])= |
+| =crab_router_addr_messages_received= | Counter | =rate(crab_router_addr_messages_received[5m])= |
+| =crab_router_discovery_runs= | Counter | =rate(crab_router_discovery_runs[5m])= |
+| =crab_router_nodes_discovered= | Counter | =rate(crab_router_nodes_discovered[5m])= |
+| =crab_router_nodes_pruned= | Counter | =rate(crab_router_nodes_pruned[5m])= |
+
+Useful focused queries:
+
+- Total tx flow only (separate from inv scale):
+  - =rate(crab_router_transactions_received[5m])=
+  - =rate(crab_router_transactions_relayed[5m])=
+- Source attribution:
+  - =rate(crab_router_transactions_received_from_knots[5m])=
+  - =rate(crab_router_transactions_received_from_libre[5m])=
+  - =rate(crab_router_transactions_received_from_core[5m])=
+- High-volume inv stream (separate panel):
+  - =rate(crab_router_inv_messages_received[5m])=
+- Current unclassified user agents:
+  - =topk(30, crab_router_unclassified_agent_peers)=
+
+* Monitoring Stack (Prometheus + Grafana)
+
+The repository includes a pre-wired monitoring stack:
+
+- =docker-compose.yml=
+- =monitoring/prometheus/prometheus.yml=
+- Grafana provisioning in =monitoring/grafana/provisioning/=
+- Predefined dashboard JSON: =monitoring/grafana/dashboards/crab-router-overview.json=
+
+Run:
+
+#+begin_src bash
+# 1) Start router (host process)
+cargo run --release -- --metrics-addr 0.0.0.0:15444
+
+# 2) Start monitoring stack
+docker compose up -d
+#+end_src
+
+Access:
+
+- Prometheus UI: =http://127.0.0.1:9090=
+- Grafana UI: =http://127.0.0.1:3000= (default login =admin/admin=)
+- Dashboard: =Crab Router/Crab Router Overview=
+
+Notes:
+
+- Prometheus scrapes =host.docker.internal:15444= from inside Docker.
+- On Linux Docker Engine, =extra_hosts: host.docker.internal:host-gateway= is already set in compose.
+
+* Database Schema
+
+SQLite at =~/.local/share/crab-router/peers.db=:
+
+#+begin_src sql
+CREATE TABLE nodes (
+  addr TEXT PRIMARY KEY,
+  node_type TEXT NOT NULL,  -- 'knots', 'core', 'libre', 'other', 'unknown'
+  user_agent TEXT,
+  version INTEGER,
+  services INTEGER,
+  last_seen TEXT NOT NULL,
+  last_connected TEXT,
+  connection_failures INTEGER DEFAULT 0,
+  is_reachable INTEGER DEFAULT 1
+);
+#+end_src
+
+* Wire Protocol
+
+Implements Bitcoin P2P wire protocol directly:
+
+- Version handshake with =NODE_NETWORK_LIMITED= services
+- Ping/pong keepalive
+- =inv= and =tx= relay
+- =addr= gossip for peer discovery
+
+User agent: =/Crab Router:1.0.0/=
+
+* Related Work
+
+- **BIP-37** (deprecated): Bloom filters for light clients
+- **BIP-158** (Neutrino): Client-side block filters
+- **Libre Relay**: Maximally permissive relay node implementation
+- **Bitcoin Knots**: Aggressive filtering node implementation
+
+* License
+
+MIT - For educational and research purposes.
+
+* Acknowledgments
+
+Inspired by discussions with Adam Back on the futility of content-based
+mempool filtering and the robustness of decentralized gossip networks.
