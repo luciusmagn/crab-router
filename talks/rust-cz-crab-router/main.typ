@@ -3,13 +3,11 @@
 
 #show: simple-theme.with(
   aspect-ratio: "16-9",
-  footer: self => [Rust CZ Meetup · Information Theory vs Filters],
+  footer: self => [Information Theory vs Filters],
   config-info(
     title: [Information Theory vs Filters],
-    subtitle: [Bitcoin mempool filtering, topology, steganography, and a Rust demo],
     author: [Lukáš Hozda],
     institution: [Braiins],
-    date: [Rust Czech Republic Meetup],
   ),
 )
 
@@ -29,10 +27,10 @@
 
 == Lukáš Hozda
 
-- Marketing at Braiins #pause
 - Rust/Lisp programmer #pause
 - Bitcoin, Emacs, HTMX, Linux enthusiast #pause
-- Teaching Rust at MatFyz
+- Teaching Rust at MatFyz, sometimes commercial Rust courses #pause
+- Marketing at Braiins #pause
 
 ==
 
@@ -79,8 +77,6 @@
 - Block weight is bounded, so this is not "infinite blockchain bloat per block" #pause
   - The "unrestricted growth" is also often cited for OP_RETURN #pause
 - One concern is competition for scarce blockspace (including witness-heavy payloads) #pause
-- Another concern is UTXO set growth from certain usage patterns #pause
-- These are different resource problems and should not be conflated
 
 == UTXO Set
 
@@ -116,6 +112,12 @@
 - Topology matters: peers, connectivity, implementation mix #pause
 - Small relay minorities can still create viable paths
 
+== Network
+
+#align(center)[
+  #image("bitcoin network.png", height: 80%)
+]
+
 == BTC wire protocol
 
 - The protocol through which nodes talk is pretty simple
@@ -146,6 +148,12 @@
 - Node B sends `getdata` for selected txs #pause
 - Node A sends `tx` with full bytes #pause
 - This reduces bandwidth compared to pushing full txs to everyone
+
+== Relay Path
+
+#align(center)[
+  #image("bitcoin network.png", height: 80%)
+]
 
 == Filtering
 
@@ -309,13 +317,6 @@ loop {
 - Bounded channels make backpressure decisions explicit #pause
 - You can push performance without giving up memory safety
 
-== Patterns
-
-- One task per peer is easy to reason about #pause
-- `tokio::select!` maps naturally to socket/read/write/keepalive loops #pause
-- `Arc<RwLock<...>>` is enough for shared relay state and metrics in a small tool #pause
-- `tracing` + Prometheus + Axum make observability cheap
-
 == Prometheus shill
 
 - Rust has a solid Prometheus crate with the usual metric types (counter / gauge / histogram) #pause
@@ -323,9 +324,9 @@ loop {
 - Exposing `/metrics` over Axum is simple and production-friendly #pause
 - Grafana integration is immediate; we do not need custom telemetry plumbing
 
-== Demo Tool
+== Demo
 
-- `crab-router` is a demo instrument supporting the argument #pause
+- `crab-router` #pause
 - It connects to many mainnet peers and classifies implementations #pause
 - It observes relay, discovery, and transaction flow metrics #pause
 - The point is measurement and demonstration
@@ -336,14 +337,6 @@ loop {
 - Even a filtering majority does not imply network-wide suppression #pause
 - A permissive relay layer can explicitly bridge filtered regions and miners / pools #pause
 - Pools do not automatically share content-filtering incentives if the transactions pay
-
-= Demo
-
-== Demo
-
-- Live `crab-router` run on mainnet #pause
-- Peer mix and transaction flow in Grafana #pause
-- Discovery traffic (`addr` / `getaddr`) #pause
 
 = End
 
