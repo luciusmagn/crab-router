@@ -1,10 +1,13 @@
 use crate::db::{AddressDb, NodeType};
 use crate::discovery::DiscoveryService;
 use crate::metrics::Metrics;
-use crate::p2p::message::{Inventory, Message};
+use crate::p2p::message::{AddressEntry, Inventory, Message};
 use crate::p2p::{Peer, PeerEvent, PeerHandle};
+use bitcoin::p2p::ServiceFlags;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid, Wtxid};
+use chrono::Utc;
+use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
@@ -22,6 +25,7 @@ const RECENT_TX_CACHE_LIMIT: usize = 20_000;
 const REQUESTED_TXID_TTL: Duration = Duration::from_secs(120);
 const OUTBOUND_REFILL_INTERVAL: Duration = Duration::from_secs(3);
 const MAX_CONNECT_ATTEMPTS_PER_TICK: usize = 192;
+const GETADDR_RESPONSE_LIMIT: usize = 50;
 
 #[derive(Default)]
 struct RelayState {
@@ -466,6 +470,39 @@ impl PeerManager {
                 if sent > 0 {
                     let metrics = self.metrics.write().await;
                     metrics.transactions_relayed.inc_by(sent);
+                }
+            }
+            Message::GetAddr => {
+                {
+                    let metrics = self.metrics.write().await;
+                    metrics.getaddr_messages_received.inc();
+                }
+
+                let response_addrs = {
+                    let peers = self.peers.read().await;
+                    let mut candidates: Vec<_> = peers
+                        .iter()
+                        .filter(|peer| peer.addr() != from_addr)
+                        .map(PeerHandle::addr)
+                        .collect();
+
+                    let mut rng = rand::thread_rng();
+                    candidates.shuffle(&mut rng);
+                    candidates.truncate(GETADDR_RESPONSE_LIMIT);
+
+                    let timestamp = Utc::now().timestamp().max(0) as u32;
+                    candidates
+                        .into_iter()
+                        .map(|addr| AddressEntry {
+                            services: ServiceFlags::NONE,
+                            addr,
+                            timestamp,
+                        })
+                        .collect::<Vec<_>>()
+                };
+
+                if !response_addrs.is_empty() {
+                    let _ = self.send_to_peer(from_addr, Message::Addr(response_addrs)).await;
                 }
             }
             _ => {}

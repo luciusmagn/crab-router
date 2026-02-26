@@ -457,6 +457,11 @@
           "expr": "rate(crab_router_addr_messages_received[5m])",
           "legendFormat": "addr messages/s",
           "refId": "D"
+        },
+        {
+          "expr": "rate(crab_router_getaddr_messages_received[5m])",
+          "legendFormat": "getaddr messages/s",
+          "refId": "E"
         }
       ],
       "title": "Discovery Activity",

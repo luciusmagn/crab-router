@@ -25,6 +25,7 @@ pub struct Metrics {
     pub unclassified_agent_peers: IntGaugeVec,
     pub inv_messages_received: IntCounter,
     pub addr_messages_received: IntCounter,
+    pub getaddr_messages_received: IntCounter,
     pub knots_peers: IntGauge,
     pub core_peers: IntGauge,
     pub libre_peers: IntGauge,
@@ -101,6 +102,11 @@ impl Metrics {
             addr_messages_received: register_int_counter!(
                 "crab_router_addr_messages_received",
                 "Total number of addr messages received"
+            )
+            .unwrap(),
+            getaddr_messages_received: register_int_counter!(
+                "crab_router_getaddr_messages_received",
+                "Total number of getaddr messages received"
             )
             .unwrap(),
             knots_peers: register_int_gauge!(
