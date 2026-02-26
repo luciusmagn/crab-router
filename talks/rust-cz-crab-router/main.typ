@@ -61,9 +61,19 @@
 == Criticism
 
 - Most criticism targets inscriptions and transaction patterns, not the numbering convention itself #pause
-- One concern is chain data / blockspace usage (especially witness payloads) #pause
+- Block weight is bounded, so this is not "infinite blockchain bloat per block" #pause
+- One concern is competition for scarce blockspace (including witness-heavy payloads) #pause
 - Another concern is UTXO set growth from certain usage patterns #pause
 - These are different resource problems and should not be conflated
+
+== Chain Growth
+
+- The more precise concern is sustained chain growth over time and who uses scarce blockspace #pause
+- Historical storage, bandwidth, and validation costs still accumulate
+
+#align(center)[
+  #image("blockchain-size-growth.png", width: 95%)
+]
 
 = Network
 
