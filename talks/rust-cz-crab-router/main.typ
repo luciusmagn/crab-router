@@ -192,11 +192,14 @@
 - Network traffic: timing, padding, or packet ordering can carry side-information #pause
 - The same message can often move between multiple carriers
 
-== Rust Toy
+== Rust example
 
 - I have a tiny Rust example that hides a message in image pixel bytes (LSB) #pause
-- PNG works on the same principle after decoding to pixel bytes #pause
-- I can show it on a BMP, and the encoding/decoding logic is the same
+- I show it on a BMP photo #pause
+- The encoder writes one hidden bit into the lowest bit of each pixel byte #pause
+- The decoder reads those low bits back in the agreed order
+
+== Encoding
 
 ```rust
 fn put_bit(byte: &mut u8, bit: u8) {
@@ -206,7 +209,11 @@ fn put_bit(byte: &mut u8, bit: u8) {
 for (i, bit) in bits.enumerate() {
     put_bit(&mut pixels[i], bit);
 }
+```
 
+== Decoding
+
+```rust
 let mut out = 0u8;
 for (shift, b) in pixels[i..i + 8].iter().enumerate() {
     out |= (b & 1) << shift;
@@ -216,13 +223,13 @@ for (shift, b) in pixels[i..i + 8].iter().enumerate() {
 == Original BMP
 
 #align(center)[
-  #image("me-original.png", height: 86%)
+  #image("me-original.png", height: 80%)
 ]
 
 == Encoded BMP
 
 #align(center)[
-  #image("me-encoded.png", height: 86%)
+  #image("me-encoded.png", height: 80%)
 ]
 
 == BTC Examples
