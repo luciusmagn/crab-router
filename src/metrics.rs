@@ -1,8 +1,8 @@
 use crate::db::NodeType;
 use axum::{Router, routing::get};
 use prometheus::{
-    Encoder, IntCounter, IntGauge, IntGaugeVec, TextEncoder, register_int_counter,
-    register_int_gauge, register_int_gauge_vec,
+    Encoder, Histogram, IntCounter, IntGauge, IntGaugeVec, TextEncoder, register_histogram,
+    register_int_counter, register_int_gauge, register_int_gauge_vec,
 };
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -30,7 +30,7 @@ pub struct Metrics {
     pub sendaddrv2_messages_received: IntCounter,
     pub wtxidrelay_messages_received: IntCounter,
     pub feefilter_messages_received: IntCounter,
-    pub feefilter_last_sat_per_kvb: IntGauge,
+    pub feefilter_sat_per_kvb: Histogram,
     pub knots_peers: IntGauge,
     pub core_peers: IntGauge,
     pub libre_peers: IntGauge,
@@ -134,9 +134,26 @@ impl Metrics {
                 "Total number of feefilter messages received"
             )
             .unwrap(),
-            feefilter_last_sat_per_kvb: register_int_gauge!(
-                "crab_router_feefilter_last_sat_per_kvb",
-                "Last feefilter value observed (satoshis per 1000 bytes)"
+            feefilter_sat_per_kvb: register_histogram!(
+                "crab_router_feefilter_sat_per_kvb",
+                "Observed feefilter values (satoshis per 1000 bytes)",
+                vec![
+                    0.0,
+                    100.0,
+                    500.0,
+                    1_000.0,
+                    2_000.0,
+                    5_000.0,
+                    10_000.0,
+                    20_000.0,
+                    50_000.0,
+                    100_000.0,
+                    200_000.0,
+                    500_000.0,
+                    1_000_000.0,
+                    2_000_000.0,
+                    5_000_000.0,
+                ]
             )
             .unwrap(),
             knots_peers: register_int_gauge!(

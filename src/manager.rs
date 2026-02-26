@@ -515,7 +515,7 @@ impl PeerManager {
             Message::FeeFilter(feerate) => {
                 let metrics = self.metrics.write().await;
                 metrics.feefilter_messages_received.inc();
-                metrics.feefilter_last_sat_per_kvb.set(feerate);
+                metrics.feefilter_sat_per_kvb.observe((feerate.max(0)) as f64);
             }
             Message::WtxidRelay => {
                 let metrics = self.metrics.write().await;

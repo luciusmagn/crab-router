@@ -531,18 +531,9 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
           "unit": "none"
         },
         "overrides": []
@@ -555,32 +546,40 @@
       },
       "id": 13,
       "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom"
         },
-        "textMode": "auto"
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "expr": "crab_router_feefilter_last_sat_per_kvb",
-          "instant": true,
+          "expr": "histogram_quantile(0.5, sum(rate(crab_router_feefilter_sat_per_kvb_bucket[5m])) by (le))",
+          "legendFormat": "p50",
           "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.9, sum(rate(crab_router_feefilter_sat_per_kvb_bucket[5m])) by (le))",
+          "legendFormat": "p90",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(crab_router_feefilter_sat_per_kvb_bucket[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        },
+        {
+          "expr": "rate(crab_router_feefilter_sat_per_kvb_count[5m])",
+          "legendFormat": "observations/s",
+          "refId": "D"
         }
       ],
-      "title": "Last Fee Filter (sat/kvB)",
-      "type": "stat"
+      "title": "Fee Filter Distribution (sat/kvB)",
+      "type": "timeseries"
     },
     {
       "datasource": {
