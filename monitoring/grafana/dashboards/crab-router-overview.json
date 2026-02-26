@@ -462,10 +462,125 @@
           "expr": "rate(crab_router_getaddr_messages_received[5m])",
           "legendFormat": "getaddr messages/s",
           "refId": "E"
+        },
+        {
+          "expr": "rate(crab_router_addrv2_messages_received[5m])",
+          "legendFormat": "addrv2 messages/s",
+          "refId": "F"
         }
       ],
       "title": "Discovery Activity",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(crab_router_feefilter_messages_received[5m])",
+          "legendFormat": "feefilter messages/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(crab_router_sendaddrv2_messages_received[5m])",
+          "legendFormat": "sendaddrv2 messages/s",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(crab_router_wtxidrelay_messages_received[5m])",
+          "legendFormat": "wtxidrelay messages/s",
+          "refId": "C"
+        }
+      ],
+      "title": "Peer Capability / Policy Signals",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "crab_router_feefilter_last_sat_per_kvb",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Last Fee Filter (sat/kvB)",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -588,7 +703,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 36
       },
       "id": 11,
       "options": {
@@ -652,6 +767,6 @@
   "timezone": "",
   "title": "Crab Router Overview",
   "uid": "crab-router-overview",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }

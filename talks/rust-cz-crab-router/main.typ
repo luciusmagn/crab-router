@@ -1,7 +1,7 @@
 #import "@preview/touying:0.5.3": *
-#import themes.metropolis: *
+#import themes.simple: *
 
-#show: metropolis-theme.with(
+#show: simple-theme.with(
   aspect-ratio: "16-9",
   footer: self => [Rust CZ Meetup · Information Theory vs Filters],
   config-info(
@@ -13,7 +13,13 @@
   ),
 )
 
-#title-slide()
+#set page(fill: rgb("#f8f5ee"))
+
+#title-slide()[
+  #align(center + horizon)[
+    = Information Theory vs Filters
+  ]
+]
 
 = Intro
 

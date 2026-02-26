@@ -25,7 +25,12 @@ pub struct Metrics {
     pub unclassified_agent_peers: IntGaugeVec,
     pub inv_messages_received: IntCounter,
     pub addr_messages_received: IntCounter,
+    pub addrv2_messages_received: IntCounter,
     pub getaddr_messages_received: IntCounter,
+    pub sendaddrv2_messages_received: IntCounter,
+    pub wtxidrelay_messages_received: IntCounter,
+    pub feefilter_messages_received: IntCounter,
+    pub feefilter_last_sat_per_kvb: IntGauge,
     pub knots_peers: IntGauge,
     pub core_peers: IntGauge,
     pub libre_peers: IntGauge,
@@ -104,9 +109,34 @@ impl Metrics {
                 "Total number of addr messages received"
             )
             .unwrap(),
+            addrv2_messages_received: register_int_counter!(
+                "crab_router_addrv2_messages_received",
+                "Total number of addrv2 messages received"
+            )
+            .unwrap(),
             getaddr_messages_received: register_int_counter!(
                 "crab_router_getaddr_messages_received",
                 "Total number of getaddr messages received"
+            )
+            .unwrap(),
+            sendaddrv2_messages_received: register_int_counter!(
+                "crab_router_sendaddrv2_messages_received",
+                "Total number of sendaddrv2 messages received"
+            )
+            .unwrap(),
+            wtxidrelay_messages_received: register_int_counter!(
+                "crab_router_wtxidrelay_messages_received",
+                "Total number of wtxidrelay messages received"
+            )
+            .unwrap(),
+            feefilter_messages_received: register_int_counter!(
+                "crab_router_feefilter_messages_received",
+                "Total number of feefilter messages received"
+            )
+            .unwrap(),
+            feefilter_last_sat_per_kvb: register_int_gauge!(
+                "crab_router_feefilter_last_sat_per_kvb",
+                "Last feefilter value observed (satoshis per 1000 bytes)"
             )
             .unwrap(),
             knots_peers: register_int_gauge!(

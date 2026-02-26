@@ -32,8 +32,15 @@ pub enum PeerEvent {
     },
     Addresses {
         addr: SocketAddr,
+        kind: AddressMessageKind,
         addrs: Vec<AddressEntry>,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AddressMessageKind {
+    Addr,
+    AddrV2,
 }
 
 #[derive(Debug, Clone)]
@@ -159,13 +166,22 @@ impl Peer {
         };
 
         let peer_version = PeerVersion::from_version_message(&their_version);
-        self.node_type = NodeType::from_user_agent(&peer_version.user_agent);
+        self.node_type = NodeType::from_handshake(
+            &peer_version.user_agent,
+            peer_version.services.to_u64(),
+        );
         self.version = Some(peer_version.clone());
 
         info!(
             "Peer {} is {:?} (agent: {}, version: {})",
             self.addr, self.node_type, peer_version.user_agent, peer_version.version
         );
+
+        // Advertise optional capabilities that are negotiated between version and verack.
+        if peer_version.version >= 70016 {
+            self.send_message(&Message::SendAddrV2).await?;
+            self.send_message(&Message::WtxidRelay).await?;
+        }
 
         // Send verack
         self.send_message(&Message::Verack).await?;
@@ -174,6 +190,17 @@ impl Peer {
         loop {
             match self.recv_message().await? {
                 Some(Message::Verack) => break,
+                Some(Message::Ping(nonce)) => {
+                    self.send_message(&Message::Pong(nonce)).await?;
+                }
+                Some(message @ Message::SendAddrV2)
+                | Some(message @ Message::WtxidRelay)
+                | Some(message @ Message::FeeFilter(_)) => {
+                    let _ = self.event_tx.send(PeerEvent::Message {
+                        addr: self.addr,
+                        message,
+                    });
+                }
                 Some(_) => continue,
                 None => anyhow::bail!("Connection closed during handshake"),
             }
@@ -327,6 +354,14 @@ impl Peer {
             Message::Addr(entries) => {
                 let _ = self.event_tx.send(PeerEvent::Addresses {
                     addr: self.addr,
+                    kind: AddressMessageKind::Addr,
+                    addrs: entries,
+                });
+            }
+            Message::AddrV2(entries) => {
+                let _ = self.event_tx.send(PeerEvent::Addresses {
+                    addr: self.addr,
+                    kind: AddressMessageKind::AddrV2,
                     addrs: entries,
                 });
             }

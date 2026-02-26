@@ -2,7 +2,7 @@ use crate::db::{AddressDb, NodeType};
 use crate::discovery::DiscoveryService;
 use crate::metrics::Metrics;
 use crate::p2p::message::{AddressEntry, Inventory, Message};
-use crate::p2p::{Peer, PeerEvent, PeerHandle};
+use crate::p2p::{AddressMessageKind, Peer, PeerEvent, PeerHandle};
 use bitcoin::p2p::ServiceFlags;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid, Wtxid};
@@ -372,11 +372,18 @@ impl PeerManager {
                 PeerEvent::Message { addr, message } => {
                     self.handle_message(addr, message).await;
                 }
-                PeerEvent::Addresses { addr, addrs } => {
-                    info!("Received {} addresses from peer {}", addrs.len(), addr);
+                PeerEvent::Addresses { addr, kind, addrs } => {
+                    let kind_name = match kind {
+                        AddressMessageKind::Addr => "addr",
+                        AddressMessageKind::AddrV2 => "addrv2",
+                    };
+                    info!("Received {} {} addresses from peer {}", addrs.len(), kind_name, addr);
                     {
                         let metrics = self.metrics.write().await;
-                        metrics.addr_messages_received.inc();
+                        match kind {
+                            AddressMessageKind::Addr => metrics.addr_messages_received.inc(),
+                            AddressMessageKind::AddrV2 => metrics.addrv2_messages_received.inc(),
+                        }
                     }
 
                     if let Some(discovery) = &self.discovery {
@@ -504,6 +511,19 @@ impl PeerManager {
                 if !response_addrs.is_empty() {
                     let _ = self.send_to_peer(from_addr, Message::Addr(response_addrs)).await;
                 }
+            }
+            Message::FeeFilter(feerate) => {
+                let metrics = self.metrics.write().await;
+                metrics.feefilter_messages_received.inc();
+                metrics.feefilter_last_sat_per_kvb.set(feerate);
+            }
+            Message::WtxidRelay => {
+                let metrics = self.metrics.write().await;
+                metrics.wtxidrelay_messages_received.inc();
+            }
+            Message::SendAddrV2 => {
+                let metrics = self.metrics.write().await;
+                metrics.sendaddrv2_messages_received.inc();
             }
             _ => {}
         }

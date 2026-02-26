@@ -15,11 +15,14 @@ pub enum NodeType {
 }
 
 impl NodeType {
-    pub fn from_user_agent(agent: &str) -> Self {
+    // Commonly used service bit for Libre Relay signaling.
+    const NODE_LIBRE_RELAY: u64 = 1 << 29;
+
+    pub fn from_handshake(agent: &str, services: u64) -> Self {
         let lower = agent.to_lowercase();
         if lower.contains("knots") {
             NodeType::Knots
-        } else if lower.contains("libre") {
+        } else if (services & Self::NODE_LIBRE_RELAY) != 0 || lower.contains("libre") {
             NodeType::LibreRelay
         } else if lower.contains("satoshi") || lower.contains("core") {
             NodeType::Core
