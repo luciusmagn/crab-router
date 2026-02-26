@@ -1,0 +1,27 @@
+#+TITLE: Information Theory vs Filters - Speaker Notes
+#+AUTHOR: Lukáš Hozda
+
+* Demo Plan
+
+- Run =crab-router= on mainnet
+- Watch peer mix in Grafana
+- Watch tx flow and relay activity
+- Watch =addr= / =getaddr= traffic
+- Relate observed behavior back to topology and filtering claims
+
+* Demo Watchlist
+
+- =connected_peers=, =core_peers=, =knots_peers=, =libre_peers=
+- =transactions_received= vs =transactions_relayed=
+- =transactions_received_from_*=
+- =inv_messages_received=
+- =addr_messages_received=
+- =getaddr_messages_received=
+
+* Demo Fallback
+
+- If live tx traffic is slow, focus on topology and peer classification
+- Show discovery traffic and message rates
+- Walk through expected relay path from the metrics that are available
+- The argument does not depend on a lucky live screenshot
+
