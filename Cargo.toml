@@ -3,6 +3,10 @@ name = "router"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [".", "tools/lsb-stego-demo"]
+default-members = ["."]
+
 [dependencies]
 tokio = { version = "1.35", features = ["full"] }
 bitcoin = { version = "0.32", features = ["std"] }

@@ -10,23 +10,23 @@ bit-hiding idea is the same after a PNG is decoded to pixel bytes.
 Generate a carrier image:
 
 ```bash
-cargo run --manifest-path tools/lsb-stego-demo/Cargo.toml -- gen /tmp/carrier.bmp 320 180
+cargo run -p lsb-stego-demo -- gen /tmp/carrier.bmp 320 180
 ```
 
 Encode a message:
 
 ```bash
-cargo run --manifest-path tools/lsb-stego-demo/Cargo.toml -- encode /tmp/carrier.bmp /tmp/stego.bmp "hello rust cz"
+cargo run -p lsb-stego-demo -- encode /tmp/carrier.bmp /tmp/stego.bmp "hello rust cz"
 ```
 
 Decode a message:
 
 ```bash
-cargo run --manifest-path tools/lsb-stego-demo/Cargo.toml -- decode /tmp/stego.bmp
+cargo run -p lsb-stego-demo -- decode /tmp/stego.bmp
 ```
 
 Quick end-to-end demo:
 
 ```bash
-cargo run --manifest-path tools/lsb-stego-demo/Cargo.toml -- demo
+cargo run -p lsb-stego-demo -- demo
 ```
