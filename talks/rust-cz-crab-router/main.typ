@@ -275,20 +275,23 @@ for (shift, b) in pixels[i..i + 8].iter().enumerate() {
 - Rust in infrastructure components #pause
 - Rust in high-level, low-latency network services
 
-== Async in Rust
+== Async Rust
 
-- `async fn` lets us write non-blocking I/O code in direct style #pause
-- Futures represent work that can make progress over time #pause
-- `.await` yields control while waiting for I/O #pause
-- This is a good fit when one process manages many peer connections
+- Since async was merged, Rust is very good at network programming with many peers #pause
+- We can tackle many connections and events at once, with low overhead #pause
+- Rust is also generally a good fit for sensitive applications (hence its adoption in e.g. BDK) #pause
+  - Not relevant for this example, though #pause
+- This makes Rust invaluable for both Braiins OS and Braiins Pool
 
 == Tokio
 
 - Network software is mostly waiting: sockets, timeouts, backpressure #pause
 - Async tasks make large peer sets practical #pause
 - Rust gives memory safety under concurrency #pause
-- Metrics/logging compose well in the same process
+- Metrics/logging compose well in the same process #pause
+  - We can use Prometheus!
 
+== Tokio
 ```rust
 loop {
     tokio::select! {
@@ -299,7 +302,7 @@ loop {
 }
 ```
 
-== Why Rust
+== Rust pitch part 2: The electric boogaloo
 
 - Hostile network input benefits from strong typing and explicit parsing #pause
 - Enums + `match` make protocol state handling readable and auditable #pause
@@ -313,12 +316,26 @@ loop {
 - `Arc<RwLock<...>>` is enough for shared relay state and metrics in a small tool #pause
 - `tracing` + Prometheus + Axum make observability cheap
 
+== Prometheus shill
+
+- Rust has a solid Prometheus crate with the usual metric types (counter / gauge / histogram) #pause
+- Instrumentation is straightforward to wire into normal application code paths #pause
+- Exposing `/metrics` over Axum is simple and production-friendly #pause
+- Grafana integration is immediate; we do not need custom telemetry plumbing
+
 == Demo Tool
 
 - `crab-router` is a demo instrument supporting the argument #pause
 - It connects to many mainnet peers and classifies implementations #pause
 - It observes relay, discovery, and transaction flow metrics #pause
 - The point is measurement and demonstration
+
+== Thesis
+
+- In this topology, relay-level filtering is easy to route around #pause
+- Even a filtering majority does not imply network-wide suppression #pause
+- A permissive relay layer can explicitly bridge filtered regions and miners / pools #pause
+- Pools do not automatically share content-filtering incentives if the transactions pay
 
 = Demo
 
@@ -327,7 +344,6 @@ loop {
 - Live `crab-router` run on mainnet #pause
 - Peer mix and transaction flow in Grafana #pause
 - Discovery traffic (`addr` / `getaddr`) #pause
-- Use observations to support the topology argument
 
 = End
 
