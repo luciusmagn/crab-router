@@ -15,6 +15,10 @@
 
 #set page(fill: rgb("#f8f5ee"))
 
+#align(center + horizon)[
+  #image("braiins-symbol-black-rgb.png", width: 28%)
+]
+
 #title-slide()[
   #align(center + horizon)[
     = Information Theory vs Filters
@@ -27,19 +31,29 @@
 
 - Marketing at Braiins #pause
 - Rust/Lisp programmer #pause
-- Former embedded Rust developer #pause
+- Bitcoin, Emacs, HTMX, Linux enthusiast #pause
 - Teaching Rust at MatFyz
+
+==
+
+#align(center)[
+  #image("lukas-rust-book.png", height: 86%)
+]
 
 == Context
 
-- Ongoing Core vs Knots debate #pause
-- Filtering is one of the main fault lines #pause
+- There is an ongoing Core vs Knots debate #pause
+- Filtering is one of the main (technical) fault lines #pause
+  - Proponents of filtering want to filter arbitrary data embedding #pause
+  - All non-monetary data on the blockchain == spam (?) and should be rejected #pause
 - Focus today: mempool / relay-level filtering #pause
 - `BIP-110` exists, but consensus-level filtering is out of scope today
 
 == Ordinals
 
 - Ordinals are a convention for tracking individual satoshis #pause
+- More precisely, ordinal theory is one ruleset for saying "these sats are the same" across transactions #pause
+- You could define a different tracking ruleset; the point is social coordination and shared interpretation #pause
 - They assign each sat a stable identity/index within the total supply #pause
 - That lets people say "this specific sat moved here" #pause
 - By themselves, ordinals are about identification and tracking, not content
@@ -47,6 +61,7 @@
 == Inscriptions
 
 - Inscriptions are arbitrary data embedded in Bitcoin transactions (usually witness data) #pause
+  - Witness data is discounted, so they can fit in more of it
 - In the ordinals ecosystem, an inscription is associated with a specific sat #pause
 - The payload can be images, text, HTML, or other bytes #pause
 - This is the part that usually triggers filtering debates
@@ -56,20 +71,30 @@
 - `Ordinal` = which sat #pause
 - `Inscription` = what data is attached/associated #pause
 - You can discuss ordinals as tracking without discussing inscriptions #pause
-- In practice, the current controversy is mostly about inscriptions
+- In practice, people usually discuss the combined ordinals+inscriptions ecosystem
 
 == Criticism
 
 - Most criticism targets inscriptions and transaction patterns, not the numbering convention itself #pause
 - Block weight is bounded, so this is not "infinite blockchain bloat per block" #pause
+  - The "unrestricted growth" is also often cited for OP_RETURN #pause
 - One concern is competition for scarce blockspace (including witness-heavy payloads) #pause
 - Another concern is UTXO set growth from certain usage patterns #pause
 - These are different resource problems and should not be conflated
 
+== UTXO Set
+
+#align(center)[
+  #image("utxo-set-chart.png", height: 80%)
+]
+
 == Chain Growth
 
 - The more precise concern is sustained chain growth over time and who uses scarce blockspace #pause
-- Historical storage, bandwidth, and validation costs still accumulate
+- Historical storage, bandwidth, and validation costs still accumulate #pause
+- UTXO set can shrink, the blockchain can't
+
+==
 
 #align(center)[
   #image("blockchain-size-growth.png", width: 95%)
@@ -90,6 +115,11 @@
 - Transactions propagate hop by hop #pause
 - Topology matters: peers, connectivity, implementation mix #pause
 - Small relay minorities can still create viable paths
+
+== BTC wire protocol
+
+- The protocol through which nodes talk is pretty simple
+- We can make a relay just by being able to process a few message types
 
 == Handshake
 
@@ -143,17 +173,71 @@
 
 == Steganography
 
-- Useful protocols have encoding capacity #pause
-- Bitcoin transactions have a large valid design space #pause
-- Data can be embedded in forms that look economically ordinary #pause
+- Steganography = hiding a message inside another valid-looking carrier #pause
+- The receiver needs an extraction rule, but outsiders may only see an ordinary object #pause
+- The carrier still "works" for its normal purpose #pause
+- Steganography is about covert encoding, not encryption
+
+== Bitcoin
+
+- Bitcoin transactions are structured, expressive, and highly constrained at the same time #pause
+- Many different valid transactions can represent similar economic intent #pause
+- This gives adversaries room to encode side-information while staying consensus-valid #pause
 - Filters must infer intent from valid transactions
 
-== Examples
+== General Examples
+
+- Image pixels: least-significant bits can carry a hidden message with little visible change #pause
+- Text: whitespace, capitalization, or punctuation patterns can encode bits #pause
+- Network traffic: timing, padding, or packet ordering can carry side-information #pause
+- The same message can often move between multiple carriers
+
+== Rust Toy
+
+- I have a tiny Rust example that hides a message in image pixel bytes (LSB) #pause
+- PNG works on the same principle after decoding to pixel bytes #pause
+- I can show it on a BMP, and the encoding/decoding logic is the same
+
+```rust
+fn put_bit(byte: &mut u8, bit: u8) {
+    *byte = (*byte & !1) | (bit & 1);
+}
+
+for (i, bit) in bits.enumerate() {
+    put_bit(&mut pixels[i], bit);
+}
+
+let mut out = 0u8;
+for (shift, b) in pixels[i..i + 8].iter().enumerate() {
+    out |= (b & 1) << shift;
+}
+```
+
+== Original BMP
+
+#align(center)[
+  #image("me-original.png", height: 86%)
+]
+
+== Encoded BMP
+
+#align(center)[
+  #image("me-encoded.png", height: 86%)
+]
+
+== BTC Examples
 
 - Explicit payload fields (for example `OP_RETURN`) #pause
 - Witness data payloads (the inscriptions case) #pause
 - Data encoded indirectly via transaction structure/pattern choices #pause
 - The same information can be moved between multiple valid representations
+
+== Encodings
+
+- `OP_RETURN` and visible witness payloads are easy to identify #pause
+- Other encodings can be much less visible at policy level #pause
+- Example: data hidden in synthetic / fake public-key-like material or script patterns #pause
+- Filtering one encoding path can push usage into less transparent and more harmful ones
 
 == Asymmetry
 
@@ -207,6 +291,20 @@ loop {
     }
 }
 ```
+
+== Why Rust
+
+- Hostile network input benefits from strong typing and explicit parsing #pause
+- Enums + `match` make protocol state handling readable and auditable #pause
+- Bounded channels make backpressure decisions explicit #pause
+- You can push performance without giving up memory safety
+
+== Patterns
+
+- One task per peer is easy to reason about #pause
+- `tokio::select!` maps naturally to socket/read/write/keepalive loops #pause
+- `Arc<RwLock<...>>` is enough for shared relay state and metrics in a small tool #pause
+- `tracing` + Prometheus + Axum make observability cheap
 
 == Demo Tool
 
