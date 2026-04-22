@@ -100,12 +100,13 @@
 
 == Mempool
 
+- List of transactions submitted to node(s), but not mined yet #pause
 - There is no single global mempool #pause
 - Every node has its own local mempool #pause
 - Local policy decides what is accepted and relayed #pause
 - Miners build blocks from what they see and what pays
 
-== Gossip
+== Gossip protocols
 
 - Nodes talk to peers, not to a central coordinator #pause
 - Transactions propagate hop by hop #pause
@@ -200,12 +201,7 @@
 - Network traffic: timing, padding, or packet ordering can carry side-information #pause
 - The same message can often move between multiple carriers
 
-== Rust example
-
-- I have a tiny Rust example that hides a message in image pixel bytes (LSB) #pause
-- I show it on a BMP photo #pause
-- The encoder writes one hidden bit into the lowest bit of each pixel byte #pause
-- The decoder reads those low bits back in the agreed order
+= Rust example
 
 == Encoding
 
@@ -317,26 +313,7 @@ loop {
 - Bounded channels make backpressure decisions explicit #pause
 - You can push performance without giving up memory safety
 
-== Prometheus shill
-
-- Rust has a solid Prometheus crate with the usual metric types (counter / gauge / histogram) #pause
-- Instrumentation is straightforward to wire into normal application code paths #pause
-- Exposing `/metrics` over Axum is simple and production-friendly #pause
-- Grafana integration is immediate; we do not need custom telemetry plumbing
-
-== Demo
-
-- `crab-router` #pause
-- It connects to many mainnet peers and classifies implementations #pause
-- It observes relay, discovery, and transaction flow metrics #pause
-- The point is measurement and demonstration
-
-== Thesis
-
-- In this topology, relay-level filtering is easy to route around #pause
-- Even a filtering majority does not imply network-wide suppression #pause
-- A permissive relay layer can explicitly bridge filtered regions and miners / pools #pause
-- Pools do not automatically share content-filtering incentives if the transactions pay
+= Demo
 
 = End
 
