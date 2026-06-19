@@ -3,15 +3,19 @@
 
 #show: simple-theme.with(
   aspect-ratio: "16-9",
-  footer: self => [BIP-110: Activation and Timeline],
+  footer: self => [BIP-110],
   config-info(
-    title: [BIP-110: Activation and Timeline],
+    title: [BIP-110],
     author: [Lukáš Hozda],
     institution: [Braiins],
   ),
+  config-page(
+    fill: rgb("#f8f5ee"),
+  ),
+  config-colors(
+    neutral-lightest: rgb("#f8f5ee"),
+  ),
 )
-
-#set page(fill: rgb("#f8f5ee"))
 
 #align(center + horizon)[
   #image("braiins-symbol-black-rgb.png", width: 28%)
@@ -19,7 +23,7 @@
 
 #title-slide()[
   #align(center + horizon)[
-    = BIP-110: Activation and Timeline
+    = BIP-110
   ]
 ]
 
@@ -119,15 +123,8 @@
 - Signaling window is broken into 2016-block retarget periods #pause
 - 95% of blocks in a period must signal for lock-in #pause
 - Has a start time and a timeout (can end in FAILED) #pause
-- Miners can veto by simply not signaling
-
-== BIP9 states
-
-- DEFINED: waiting for start time #pause
-- STARTED: signaling window is open #pause
-- LOCKED_IN: threshold was reached, activation scheduled #pause
-- ACTIVE: new rules are enforced #pause
-- FAILED: timeout hit without reaching threshold
+- Miners can veto by simply not signaling #pause
+- States: DEFINED, STARTED, LOCKED_IN, ACTIVE, FAILED
 
 == BIP8
 
@@ -150,10 +147,9 @@
 
 - BIPs 340, 341, 342 (Schnorr signatures + Taproot + Tapscript) #pause
 - Activated via Speedy Trial in November 2021 #pause
-- Signaling reached near 100% in the lock-in period #pause
-- The current baseline for "how Bitcoin upgrades are done"
+- Signaling reached near 100% in the lock-in period
 
-== Mechanisms summary
+== Mechanisms
 
 #table(
   columns: (auto, auto, auto),
@@ -167,7 +163,7 @@
 
 = BIP-110
 
-== High-level goal
+== Goal
 
 - Push back against non-monetary data embedding at the consensus level #pause
 - Temporarily invalidate several ways of embedding large payloads #pause
@@ -176,9 +172,9 @@
 
 == Terms
 
-- Before listing the restrictions, we need definitions #pause
+- Before listing the restrictions, some definitions #pause
 - scriptPubKey, PUSHDATA, witness data, taproot annex, control block, tapscript opcodes #pause
-- These come straight from Bitcoin's script system #pause
+- All related Bitcoin's script system #pause
 
 If you don't know, scripts are essentially mini programs attached to coins
 
@@ -229,7 +225,7 @@ OP_PUSHBYTES is not a real opcode, it's a raw direct push of 1-75 bytes
 == Tapscript
 
 - The scripting language used inside a Taproot script-path spend #pause
-  - FYI also has a key-path spend
+  - FYI also has a key-path spend #pause
 - Each script-path alternative is called a Tapleaf #pause
 - All of a user's Tapleaves together form a Merkle tree called the Taptree #pause
 - Only the leaf you actually spend needs to be revealed #pause
@@ -268,14 +264,6 @@ OP_PUSHBYTES is not a real opcode, it's a raw direct push of 1-75 bytes
 - Control blocks ≤ 257 bytes (max 128 leaves) #pause
 - No OP_SUCCESS\*, OP_IF, or OP_NOTIF in tapscripts
 
-== 
-
-- Caps the size of individual data chunks to 256 bytes #pause
-- Closes off large Taptrees beyond 128 leaves #pause
-- Bans two conditional opcodes often used to skip over embedded data #pause
-- Locks down parts of the protocol reserved for future upgrades #pause
-- Leaves normal payments untouched
-
 == Deployment parameters
 
 - name: `reduced_data` #pause
@@ -301,13 +289,6 @@ OP_PUSHBYTES is not a real opcode, it's a raw direct push of 1-75 bytes
 - LOCKED_IN → ACTIVE (one retarget period later) #pause
 - ACTIVE → EXPIRED (after about one year) #pause
 - FAILED is never reached: deployment cannot fail by timeout
-
-== Why this combination is unusual
-
-- 55% is well below recent precedent #pause
-- Mandatory signaling means activation is effectively built in #pause
-- It is the first soft fork designed to expire automatically #pause
-- The window is compressed (~9 months) #pause
 
 == Threshold context
 
@@ -406,10 +387,9 @@ OP_PUSHBYTES is not a real opcode, it's a raw direct push of 1-75 bytes
 - Locked in and activated before BIP148's flag day #pause
 - This is what actually triggered SegWit's lock-in
 
-== Important nuance
+== Segwit wasn't UASF
 
 - People often say "SegWit was activated by UASF" #pause
-- That's not quite right #pause
 - BIP148 (UASF) was a threat that changed incentives #pause
 - BIP91 (MASF variant) did the actual forcing work on miners #pause
 - SegWit's own BIP9 deployment then reached 100% signaling under pressure
