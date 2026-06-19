@@ -185,16 +185,9 @@ User agent: =/Crab Router:1.0.0/=
 
 * Related Work
 
-- **BIP-37** (deprecated): Bloom filters for light clients
-- **BIP-158** (Neutrino): Client-side block filters
 - **Libre Relay**: Maximally permissive relay node implementation
 - **Bitcoin Knots**: Aggressive filtering node implementation
 
 * License
 
 MIT - For educational and research purposes.
-
-* Acknowledgments
-
-Inspired by discussions with Adam Back on the futility of content-based
-mempool filtering and the robustness of decentralized gossip networks.
