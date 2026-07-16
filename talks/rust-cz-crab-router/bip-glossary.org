@@ -1,0 +1,452 @@
+#+TITLE: BIP-110 Glossary
+#+AUTHOR: Lukáš Hozda
+
+Glossary for =main-bip-internal.typ=. It covers the Bitcoin activation, consensus, script, SegWit, and Taproot terms used in the deck.
+
+* Consensus And Activation
+
+** Bitcoin Improvement Proposal (BIP)
+A design document for a proposed Bitcoin change. Some BIPs define consensus changes; others document processes, APIs, standards, or informational material.
+
+** BIP-110
+The Reduced Data Temporary Softfork. A draft soft fork proposal that temporarily restricts several large-data transaction patterns for about one year after activation.
+
+** Consensus rules
+Rules every validating node uses to decide whether blocks and transactions are valid. Violating consensus rules makes a block invalid to nodes enforcing those rules.
+
+** Soft fork
+A tightening of consensus rules. New nodes reject some blocks or transactions that old nodes would have accepted, while old nodes can still follow the new chain if miners enforce the tighter rules.
+
+** Hard fork
+A loosening or incompatible change to consensus rules. Old nodes reject blocks made under the new rules unless they upgrade.
+
+** Activation
+The process by which a proposed consensus change moves from inactive to enforced.
+
+** Version bits
+A mechanism that uses bits in the block header version field to let miners signal readiness for a deployment.
+
+** Block header
+The compact header of a Bitcoin block. It includes the version field, previous block hash, Merkle root, timestamp, difficulty target, and nonce.
+
+** Signaling
+Miners setting a specified version bit in blocks to indicate support or readiness for a proposal.
+
+** Retarget period
+A 2016-block difficulty adjustment window. BIP9-style deployments count signaling blocks within these windows.
+
+** Threshold
+The number or percentage of signaling blocks needed in a retarget period to lock in a deployment.
+
+** Lock-in
+The state reached after the signaling threshold is met, or after forced signaling conditions are satisfied. Enforcement starts after the lock-in delay.
+
+** Miner veto
+The ability miners have in some activation mechanisms to block activation by refusing to signal.
+
+** MASF
+Miner Activated Soft Fork. A soft fork activation path where miners signal readiness and lock in the change once a threshold is reached.
+
+** UASF
+User Activated Soft Fork. A soft fork activation path where users run nodes that enforce new rules at a chosen time or height, regardless of miner signaling.
+
+** Flag day
+A preannounced date or block height at which nodes begin enforcing new rules.
+
+** Economic full node
+A full node used by economically relevant actors such as exchanges, custodians, merchants, payment processors, or large holders.
+
+** Chain split
+A situation where different node sets follow incompatible chains because they enforce different consensus rules.
+
+** BIP9
+The standard version-bits activation framework used by several earlier soft forks. It has a start time, timeout, signaling threshold, and states such as =DEFINED=, =STARTED=, =LOCKED_IN=, =ACTIVE=, and =FAILED=.
+
+** BIP8
+A BIP9-like activation framework that uses block heights rather than wall-clock time. It adds a Lock on Timeout parameter.
+
+** LOT
+Lock on Timeout. A BIP8 parameter that controls what happens if miner signaling does not reach threshold before timeout.
+
+** LOT=false
+BIP8 mode where a deployment can fail if the threshold is not reached before timeout.
+
+** LOT=true
+BIP8 mode where the deployment locks in at timeout even without miner threshold support.
+
+** Speedy Trial
+The short BIP8 LOT=false activation process used for Taproot. It gave miners a short window to signal and fail fast if they did not.
+
+** =DEFINED=
+Initial deployment state before the start time or start height.
+
+** =STARTED=
+Deployment state where signaling is counted.
+
+** =LOCKED_IN=
+Deployment state after threshold or forcing conditions are met, but before enforcement begins.
+
+** =ACTIVE=
+Deployment state where the new consensus rules are enforced.
+
+** =FAILED=
+Deployment state where activation did not happen before timeout. BIP-110 is designed not to reach this state.
+
+** =EXPIRED=
+BIP-110's proposed terminal state after its one-year active window ends.
+
+** =NO_TIMEOUT=
+Deployment parameter meaning the proposal does not fail by ordinary timeout.
+
+** =reduced_data=
+The deployment name used by BIP-110.
+
+** =max_activation_height=
+BIP-110 parameter setting the latest activation path boundary. The deck uses 965,664 as the maximum activation height.
+
+** =active_duration=
+BIP-110 parameter for how long the extra rules remain active. The deck uses 52,416 blocks, about one year.
+
+** Mandatory signaling
+BIP-110's forcing path. During the mandatory window, enforcing nodes reject blocks that do not signal the deployment bit.
+
+** Natural lock-in
+Lock-in caused by enough miners signaling before the mandatory path matters.
+
+* Earlier Bitcoin BIPs And Upgrades
+
+** BIP16
+Pay to Script Hash. Introduced P2SH, letting users pay to the hash of a script and reveal the script only when spending.
+
+** P2SH
+Pay to Script Hash. An output type where the output commits to a script hash instead of placing the full script directly in the output.
+
+** BIP65
+Soft fork that introduced =OP_CHECKLOCKTIMEVERIFY=.
+
+** CLTV
+CheckLockTimeVerify. A script feature that can prevent spending until a specified block height or time.
+
+** BIP68
+Defines relative lock-time semantics for transaction inputs.
+
+** BIP112
+Introduced =OP_CHECKSEQUENCEVERIFY=.
+
+** BIP113
+Changed lock-time evaluation to use Median Time Past.
+
+** CSV
+CheckSequenceVerify. A relative timelock feature. It can require waiting a number of blocks or time units after the coin being spent was confirmed.
+
+** BIP91
+A 2017 miner-enforced coordination mechanism that required SegWit signaling and helped trigger SegWit's BIP9 lock-in.
+
+** BIP141
+Segregated Witness consensus layer.
+
+** BIP148
+The 2017 UASF proposal that would have rejected non-SegWit-signaling blocks after August 1, 2017.
+
+** BIP340
+Schnorr signatures for Bitcoin.
+
+** BIP341
+Taproot. Defines Taproot outputs and their key-path and script-path spending rules.
+
+** BIP342
+Tapscript. Defines the script language used by Taproot script-path spends.
+
+** SegWit
+Segregated Witness. Moved signatures and other witness data outside the legacy transaction ID calculation and introduced the witness discount.
+
+** Taproot
+An upgrade that lets outputs commit to either a public key spend or a hidden tree of script alternatives.
+
+** Schnorr signatures
+Signature scheme introduced to Bitcoin by BIP340. Used by Taproot key-path spends and Tapscript.
+
+* Transactions, Blocks, And Data
+
+** Transaction
+A Bitcoin data structure that spends one or more inputs and creates one or more outputs.
+
+** Transaction output
+A spendable coin created by a transaction. It contains an amount and a locking script.
+
+** Transaction input
+A reference to a previous output plus the data needed to satisfy that output's spending conditions.
+
+** Block
+A batch of confirmed transactions plus a header that links it into the chain.
+
+** Block height
+The number of blocks before a given block in the chain. Genesis is height 0.
+
+** Block weight
+The SegWit-era block-size accounting rule. Witness bytes count less than non-witness bytes.
+
+** Mempool
+A node's local set of valid, unconfirmed transactions it may relay or mine.
+
+** Relay policy
+Local node rules for accepting and forwarding unconfirmed transactions. Relay policy is not consensus.
+
+** Mining pool
+A service that coordinates block template creation and reward distribution for many miners.
+
+** Hashrate
+The amount of proof-of-work computation directed at mining.
+
+** Transaction fee
+The difference between inputs and outputs in a transaction. Miners collect it when the transaction is confirmed.
+
+** Fee market
+The competition among transactions for limited block space through transaction fees.
+
+** Non-monetary data
+Data placed in Bitcoin transactions for purposes other than transferring bitcoin, such as images, tokens, metadata, or protocol state.
+
+** Arbitrary data
+Bytes placed in transactions without a native monetary purpose. BIP-110 targets some large, visible forms of this.
+
+** Inscription
+An Ordinals ecosystem convention for associating arbitrary payload data with a specific satoshi.
+
+** Ordinals
+A convention for numbering and tracking individual satoshis across transactions.
+
+** BRC-20
+A token convention built on inscriptions.
+
+** Runes
+A token protocol designed by Casey Rodarmor that uses Bitcoin transactions to encode token state.
+
+* Script And Outputs
+
+** Script
+Bitcoin's stack-based spending-condition language.
+
+** Script system
+The set of script forms, opcodes, witness rules, and validation rules used to lock and spend coins.
+
+** Locking script
+The script attached to an output. It defines the conditions that must be satisfied to spend that output.
+
+** =scriptPubKey=
+The technical field name for an output's locking script.
+
+** Spending condition
+The rule a spender must satisfy to spend an output.
+
+** UTXO
+Unspent Transaction Output. A coin that exists and can be spent.
+
+** UTXO set
+The set of all currently unspent transaction outputs. Full nodes need it to validate new spends.
+
+** Public key
+The public part of a cryptographic key pair. Bitcoin scripts often require signatures that verify against public keys.
+
+** Hash
+A fixed-size digest of data. Bitcoin uses hashes for transaction IDs, block IDs, commitments, and script constructions.
+
+** Commit-reveal
+A pattern where a transaction first commits to hidden data, then reveals it later when spending.
+
+** Quantum-resistant pubkeys
+Public keys from signature schemes believed to resist quantum attacks. The deck mentions them as an example of large keys that would usually be committed to by hash.
+
+** Opcode
+A script instruction.
+
+** Stack
+The data structure used by Bitcoin Script. Opcodes push, pop, and inspect stack items.
+
+** =OP_RETURN=
+An opcode commonly used to create provably unspendable outputs carrying small data payloads.
+
+** PUSHDATA
+Script operations that push byte strings onto the stack.
+
+** =OP_PUSHDATA1=
+Push opcode with a one-byte length field.
+
+** =OP_PUSHDATA2=
+Push opcode with a two-byte length field.
+
+** =OP_PUSHDATA4=
+Push opcode with a four-byte length field.
+
+** Script argument witness item
+A witness stack item passed as input data to satisfy a script. BIP-110 caps these items at 256 bytes while active.
+
+** Tapscript
+The script language used for Taproot script-path spending.
+
+** Tapscript opcode
+An opcode as interpreted under Tapscript rules.
+
+** =OP_SUCCESS*=
+Reserved Tapscript opcodes that currently make validation succeed if encountered. They exist as future soft-fork upgrade hooks.
+
+** =OP_IF=
+A conditional branch opcode. It executes a branch only if the top stack value is true.
+
+** =OP_NOTIF=
+The inverse conditional branch opcode. It executes a branch only if the top stack value is false.
+
+** Conditional branch
+A script path that executes only when a condition is true or false.
+
+* Witness And Taproot
+
+** Witness data
+SegWit transaction data that carries signatures, scripts, and script arguments outside the legacy transaction ID.
+
+** Witness discount
+SegWit's weight discount for witness bytes. Witness data counts as 1 weight unit per byte instead of 4.
+
+** Witness stack
+The ordered stack items supplied with a SegWit or Taproot spend.
+
+** Witness version
+The version byte of a SegWit output program. Version 0 is SegWit v0; version 1 is Taproot.
+
+** Undefined witness version
+A witness version without defined consensus meaning yet. BIP-110 proposes to make spending these invalid while active.
+
+** Taproot key path
+The Taproot spending path where the output is spent with a signature and no script is revealed.
+
+** Taproot script path
+The Taproot spending path where the spender reveals one script alternative and proves it belongs to the committed tree.
+
+** Tapleaf
+One Taproot script-path alternative.
+
+** Undefined Tapleaf version
+A Tapleaf version not yet assigned meaning. BIP-110 proposes to make spending undefined Tapleaf versions invalid while active.
+
+** Taptree
+The Merkle tree of Tapleaves committed to by a Taproot output.
+
+** Merkle tree
+A tree of hashes that lets a spender prove one element belongs to a committed set without revealing every element.
+
+** Merkle path
+The list of sibling hashes needed to prove that a Tapleaf belongs to the Taptree.
+
+** Control block
+Taproot data that proves the revealed Tapleaf is in the committed Taptree. Its size grows with tree depth: 33 bytes plus 32 bytes per level.
+
+** Internal public key
+The Taproot public key used inside the Taproot commitment before script-path tweaking.
+
+** Parity bit
+The bit in the Taproot control block that identifies which y-coordinate parity applies to the internal key.
+
+** Taproot annex
+An optional Taproot witness element reserved for future use. It currently has no defined meaning.
+
+** Taptree depth
+The number of Merkle tree levels between a Tapleaf and the root. Larger depth means a larger control block.
+
+** Lopsided Taptree
+A Taptree with uneven depth. It can create large control blocks and can be abused to carry arbitrary 32-byte sibling hashes.
+
+* BIP-110 Parameters And Limits
+
+** 34-byte =scriptPubKey= limit
+BIP-110's proposed limit for new output scripts, except for =OP_RETURN= outputs.
+
+** 83-byte =OP_RETURN= allowance
+BIP-110's proposed exception allowing =OP_RETURN= outputs up to 83 bytes.
+
+** 256-byte PUSHDATA limit
+BIP-110's proposed cap on =OP_PUSHDATA*= payloads while active.
+
+** 256-byte witness item limit
+BIP-110's proposed cap on script argument witness items while active.
+
+** 257-byte control block limit
+BIP-110's proposed cap on Taproot control blocks. This corresponds to maximum Taptree depth 7.
+
+** Maximum 128 leaves
+The number of leaves possible in a balanced depth-7 Taptree.
+
+** Undefined witness and Tapleaf version ban
+BIP-110's proposed rule making spends of undefined witness versions and undefined Tapleaf versions invalid while active.
+
+** Annex ban
+BIP-110's proposed rule making Taproot witness stacks with an annex invalid while active.
+
+** =OP_SUCCESS*= ban
+BIP-110's proposed rule making Tapscripts containing =OP_SUCCESS*= invalid while active.
+
+** =OP_IF= / =OP_NOTIF= restriction
+BIP-110's proposed rule making Tapscripts that execute these conditionals invalid while active.
+
+** Grandfathering
+BIP-110's exemption for inputs spending UTXOs created before activation.
+
+** Expiry
+BIP-110's planned end of enforcement after the active duration.
+
+* Implementations And Ecosystem Terms
+
+** Bitcoin Core
+The dominant Bitcoin full-node implementation. The deck notes that BIP-110 is not implemented in Bitcoin Core.
+
+** Bitcoin Knots
+A Bitcoin full-node implementation maintained by Luke Dashjr. The deck notes that BIP-110 is implemented there.
+
+** Node
+A participant running Bitcoin software. A full node independently validates blocks and transactions.
+
+** Wallet
+Software or hardware that manages keys and creates transactions.
+
+** Exchange
+A service where users trade bitcoin for other assets or currencies.
+
+** Custodian
+A service that holds bitcoin on behalf of users.
+
+** Miniscript
+A structured way to write and analyze Bitcoin scripts. The deck mentions that some Miniscript-generated Tapleaves may be affected.
+
+** BitVM
+A family of designs for proving computation on Bitcoin using large script structures. The deck mentions BitVM as a possible contract area affected by Taproot restrictions.
+
+** DATUM
+Decentralized Alternative Templates for Universal Mining. OCEAN-related mining infrastructure that lets miners use their own block templates.
+
+** OCEAN
+A mining pool associated with Luke Dashjr and Bitcoin Mechanic. The deck references it in the sentiment section.
+
+** F2Pool
+A mining pool. The deck references Wang Chun / F2Pool as publicly rejecting BIP-110 signaling.
+
+** Barefoot Mining
+A miner or mining group referenced in the deck as having produced a BIP-110-signaling block through OCEAN infrastructure.
+
+** Bitcoin Core relay-policy statement
+A public statement by Bitcoin Core contributors about relay policy and transaction filtering. The deck uses it as directionally opposed to BIP-110's philosophy.
+
+* Sentiment Terms Used Technically
+
+** Transaction neutrality
+The view that Bitcoin should validate objective transaction rules without judging transaction purpose.
+
+** Use-case filtering
+Filtering transactions based on what the transaction appears to be for, rather than only whether it satisfies objective validation rules.
+
+** Consensus-level filtering
+Filtering by consensus rule, so blocks containing violating transactions are invalid to enforcing nodes.
+
+** Social consensus
+The broad agreement among users, developers, miners, businesses, and other economic actors about what Bitcoin rules should be.
+
+** Economic consensus
+The subset of social consensus represented by economically important actors such as exchanges, custodians, wallets, payment processors, and large holders.
