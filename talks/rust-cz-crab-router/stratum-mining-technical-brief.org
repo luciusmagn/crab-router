@@ -426,3 +426,152 @@ ciphertext, tag = encrypt(key, nonce, associated_data, plaintext)
 SV2 uses a Noise handshake to establish keys and authenticate the server. ChaCha20-Poly1305 is the default AEAD cipher for subsequent traffic.
 
 AEAD does not protect a compromised endpoint, hide all traffic timing or sizes, or replace validation of jobs and shares.
+
+* Formula speaker notes
+
+State what a formula measures before reading its symbols.
+
+Useful pronunciations:
+
+- =P_share=: "share payout"
+- =D_eff=: "effective share difficulty"
+- =D_net=: "network difficulty"
+- =R_base=: "block subsidy"
+- =gamma=: "gamma"
+- =lambda=: "lambda"
+- =min=: "the smaller of"
+- =max=: "the larger of"
+
+** Target
+
+#+begin_example
+hash <= target
+#+end_example
+
+/Suggested wording:/
+
+"The target is the largest hash value we accept. A lower target is harder. The network target decides whether we found a block; the easier pool target decides whether we found a share."
+
+** Difficulty
+
+#+begin_example
+D = T1 / target
+#+end_example
+
+/Suggested wording:/
+
+"Difficulty is the inverse representation of the target. A smaller target gives a larger difficulty number, so larger difficulty means harder work."
+
+For an aggregating proxy:
+
+"A hash can pass three checkpoints. The miner submits downstream shares to the proxy. The proxy forwards only the subset meeting upstream pool difficulty. A still smaller subset meets network difficulty and becomes a block."
+
+** Coinbase construction
+
+#+begin_example
+coinbase = coinb1 || extranonce1 || extranonce2 || coinb2
+#+end_example
+
+/Suggested wording:/
+
+"The pool sends the bytes before and after the extranonce area. Extranonce1 identifies the connection. The miner changes extranonce2. Joining those four byte strings produces the coinbase transaction. Changing extranonce2 changes the coinbase transaction ID, Merkle root, and block header."
+
+The double bar means byte concatenation, not arithmetic addition.
+
+** Version-rolling mask
+
+#+begin_example
+negotiated_mask = miner_mask & server_mask
+#+end_example
+
+/Suggested wording:/
+
+"The miner advertises the bits it can roll, and the server advertises the bits it permits. Bitwise AND keeps only bits allowed by both sides."
+
+#+begin_example
+nVersion = (job_version & ~mask) | (version_bits & mask)
+#+end_example
+
+/Suggested wording:/
+
+"The job version is preserved outside the mask. The miner's values are inserted only inside the mask. Signalling and policy bits excluded by the server remain unchanged."
+
+** Basic FPPS
+
+#+begin_example
+P_share = (D_eff / D_net) * (R_base + F)
+#+end_example
+
+/Suggested wording:/
+
+"This pays one share its expected fraction of a block. The difficulty ratio tells us what fraction of the expected work for one network block the share represents. We multiply that fraction by the attempted block value: subsidy plus transaction fees."
+
+Short version:
+
+"Expected block fraction multiplied by expected block reward."
+
+For the numerical example:
+
+"The share represents one hundred-millionth of the expected work for a block. The block is worth 3.375 bitcoin. Multiplying them gives 3.375 satoshis of gross expected payout."
+
+** Full-template FPPS
+
+#+begin_example
+P_share = (D_eff / D_net) * (R_base + F_verified)
+#+end_example
+
+/Suggested wording:/
+
+"This is ordinary FPPS using a verified fee value. The miner selected the transactions, but the JDS received and validated them and calculated their fees. The pool can verify the template without constructing it."
+
+Main point:
+
+"Miner selection and pool validation are separate operations."
+
+** Coinbase-only fee cap
+
+#+begin_example
+F_cap = min(F_declared, gamma * F_avg)
+#+end_example
+
+/Suggested wording:/
+
+"The pool cannot inspect the hidden transactions, so it pays the smaller of the miner's fee claim and a cap based on recent network fees."
+
+For gamma:
+
+"Gamma is only the cap multiplier. Gamma equal to 1.4 means the pool credits at most 140 percent of its recent average fee value. It limits exposure; it does not prove the claim."
+
+** Coinbase-only share payout
+
+#+begin_example
+P_share = (D_eff / D_net) * (R_base + F_cap)
+#+end_example
+
+/Suggested wording:/
+
+"The ordinary share calculation remains the same, but the unverifiable fee claim is replaced with the capped fee value."
+
+** Surplus bonus
+
+#+begin_example
+B_surplus = lambda * max(0, F_real - F_cap)
+#+end_example
+
+/Suggested wording:/
+
+"After a valid block is found, the pool can inspect its real fees. We subtract the fee amount already covered by the cap. Max prevents a negative bonus. Lambda chooses what fraction of the remaining surplus is paid."
+
+Read it in three steps:
+
+1. Calculate =F_real - F_cap=.
+2. Replace a negative result with zero.
+3. Multiply by =lambda=.
+
+For the example:
+
+"The block has 0.12 bitcoin more fees than the cap covered. Lambda is 0.8, so the miner receives 80 percent of that surplus: 0.096 bitcoin. This is a one-off block bonus, not an addition to every share."
+
+** FPPS conclusion
+
+"Full-template mode lets the pool verify fees before paying shares, so FPPS works directly. Coinbase-only mode hides the transactions, so the pool needs a fee cap or another risk policy. The limitation comes from missing information, not from miner-created templates themselves."
