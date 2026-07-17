@@ -1,0 +1,428 @@
+#+TITLE: Stratum Mining Technical Brief
+#+AUTHOR: Lukáš Hozda
+#+OPTIONS: toc:2 num:nil
+
+* Mining job
+
+A mining job describes a proof-of-work search space. It fixes some header inputs, states which fields may vary, and identifies the work when shares are submitted.
+
+A job is not one header or one hash. One job produces many candidate headers.
+
+** Stratum V1 job data
+
+|mining.notify= contains:
+
+| Field               | Purpose                                                 |
+|---------------------+---------------------------------------------------------|
+| Job ID              | Identifies the job in =mining.submit=                     |
+| Previous block hash | Selects the chain tip                                   |
+| =coinb1= and =coinb2=   | Coinbase bytes around the extranonce                    |
+| Merkle branches     | Derive the Merkle root from the coinbase transaction ID |
+| Version             | Initial block version                                   |
+| =nBits=               | Compact Bitcoin network target                          |
+| =nTime=               | Initial block time                                      |
+| =clean_jobs=          | Whether previous jobs must be discarded                 |
+
+Connection state also supplies:
+
+- extranonce1 and extranonce2 size
+- pool share difficulty
+- version-rolling mask, if negotiated
+
+The transaction list is not sent. The Merkle branches commit the miner to the pool-selected transaction set.
+
+* Extranonce and extranonce2
+
+The 32-bit header nonce is too small for modern hardware. The extranonce adds mutable data to the coinbase transaction.
+
+#+begin_example
+coinbase = coinb1 || extranonce1 || extranonce2 || coinb2
+#+end_example
+
+| Part        | Selected by    | Purpose                               |
+|-------------+----------------+---------------------------------------|
+| =extranonce1= | Pool           | Makes connections or workers distinct |
+| =extranonce2= | Miner or proxy | Adds search space within one job      |
+
+Changing extranonce2 changes:
+
+1. the coinbase transaction
+2. its transaction ID
+3. the Merkle root
+4. the block header
+
+It does not change the non-coinbase transactions.
+
+=mining.subscribe= returns extranonce1 and the required extranonce2 byte length. =mining.submit= includes the extranonce2 used for the submitted share.
+
+The extranonce normally occupies part of the coinbase input =scriptSig=. BIP34 height and pool data share the same limited space.
+
+** Coinbase transaction byte layout
+
+The coinbase is a normal serialized Bitcoin transaction with one special input:
+
+#+begin_example
+version                              4 bytes, little-endian
+[marker, flag]                       2 bytes, only for SegWit serialization
+input_count                          CompactSize; always 1
+  previous_txid                      32 zero bytes
+  previous_output_index              ff ff ff ff
+  scriptSig_length                   CompactSize
+  scriptSig
+    BIP34 block-height push
+    pool prefix or tag
+    extranonce1                      fixed by pool for the connection
+    extranonce2                      changed by miner or proxy
+    optional pool suffix
+  sequence                           usually ff ff ff ff
+output_count                         CompactSize
+outputs                              variable length
+[witness for the coinbase input]     present for SegWit serialization
+lock_time                            4 bytes, little-endian
+#+end_example
+
+In V1 the pool supplies this split:
+
+#+begin_example
+serialized_coinbase = coinb1
+                    || extranonce1
+                    || extranonce2
+                    || coinb2
+#+end_example
+
+=coinb1= ends immediately before extranonce1. =coinb2= starts immediately after extranonce2.
+
+The exact byte offset is not fixed because the transaction, BIP34 height, pool tag, CompactSize lengths, outputs, and extranonce sizes vary. The pool already encodes the complete =scriptSig_length= in =coinb1=, so extranonce2 must have the exact negotiated length.
+
+The optional 32-byte SegWit witness-reserved value is separate from the extranonce. It lives in the coinbase input witness, not in =scriptSig=.
+
+* Version rolling
+
+Version rolling means changing permitted bits in the header's 32-bit =nVersion= field while hashing one job.
+
+Each change creates another header without rebuilding the coinbase or Merkle root. Each independently variable bit doubles the header search space.
+
+** Negotiation in Stratum V1
+
+BIP310 negotiates a bit mask:
+
+#+begin_example
+negotiated_mask = miner_mask & server_mask
+#+end_example
+
+The submitted version must satisfy:
+
+#+begin_example
+version_bits & ~negotiated_mask == 0
+
+nVersion = (job_version & ~negotiated_mask)
+         | (version_bits &  negotiated_mask)
+#+end_example
+
+Only bits set in the negotiated mask may change. The server can update the mask with =mining.set_version_mask=.
+
+** Which bits may be rolled?
+
+The negotiated mask is authoritative. There is no fixed protocol-wide answer.
+
+| Proposal     | General-purpose bits | Mask       |
+|--------------+----------------------+------------|
+| BIP320       | 13 through 28        | =0x1fffe000= |
+| BIP323 draft | 5 through 28         | =0x1fffffe0= |
+
+BIP323 is the proposed replacement for BIP320. The current SV2 specification still describes its general-purpose rolling space using BIP320.
+
+The top versionbits prefix and any bits needed for deployment signalling or pool policy remain fixed.
+
+Example:
+
+#+begin_example
+negotiated_mask = 0x18000000
+#+end_example
+
+This allows bits 27 and 28 to vary, giving four combinations.
+
+* Target and difficulty
+
+A hash is accepted when:
+
+#+begin_example
+hash <= target
+#+end_example
+
+A lower target is harder. Difficulty is the inverse representation:
+
+#+begin_example
+D = T1 / target
+#+end_example
+
+A higher difficulty is harder.
+
+** Three thresholds with one aggregating proxy
+
+| Difficulty | Set by                          | Meaning                        |
+|------------+---------------------------------+--------------------------------|
+| =D_net=      | Bitcoin consensus through =nBits= | Block threshold                |
+| =D_up=       | Pool                            | Proxy-to-pool share threshold  |
+| =D_down=     | Proxy                           | Miner-to-proxy share threshold |
+
+Normally:
+
+#+begin_example
+D_net > D_up >= D_down
+T_net < T_up <= T_down
+#+end_example
+
+For one hash:
+
+- meeting =T_down= makes it a downstream share
+- meeting =T_up= makes it an upstream share
+- meeting =T_net= makes it a Bitcoin block
+
+Example:
+
+#+begin_example
+D_down = 1,024
+D_up   = 65,536
+#+end_example
+
+About one in 64 downstream shares also meets the upstream target.
+
+A farm may have several downstream difficulty values because the proxy applies vardiff per device. Additional proxy layers can add further targets. Three is the usual count along one path with one aggregating proxy, not a protocol maximum.
+
+** Actual share difficulty
+
+A specific hash has an achieved difficulty:
+
+#+begin_example
+D_actual = T1 / hash_value
+#+end_example
+
+A share passes an assigned threshold when:
+
+#+begin_example
+D_actual >= D_assigned
+#+end_example
+
+=D_actual= is measured, not assigned. Interfaces may display it as an apparent fourth difficulty number.
+
+* FPPS
+
+FPPS means /Full Pay Per Share/. The pool pays the expected subsidy and transaction-fee value of every accepted share, regardless of when the pool finds blocks.
+
+#+begin_example
+P_share = (D_credited / D_net) * (R_base + F_job)
+#+end_example
+
+| Symbol | Meaning | Unit |
+|-
+| =P_share= | Gross expected payout for one accepted share | BTC per share |
+| =D_credited= or =D_eff= | Difficulty credited to the share | Difficulty |
+| =D_net= | Bitcoin network difficulty | Difficulty |
+| =R_base= or =R_subsidy= | Block subsidy, excluding fees | BTC per block |
+| =F_job= or =F= | Fee value assigned to the job | BTC per block |
+
+For a template:
+
+#+begin_example
+fee(tx) = sum(inputs) - sum(outputs)
+F_job  = sum(fee(tx) for every non-coinbase transaction)
+#+end_example
+
+The ratio =D_credited / D_net= is the expected fraction of one block represented by the share.
+
+** Example
+
+#+begin_example
+D_credited = 1,000,000
+D_net      = 100,000,000,000,000
+R_base     = 3.125 BTC
+F_job      = 0.250 BTC
+
+P_share = (1,000,000 / 100,000,000,000,000)
+          * (3.125 + 0.250) BTC
+        = 0.00000003375 BTC
+        = 3.375 satoshis
+#+end_example
+
+This is gross payout before the pool fee. Pools can account in fractional satoshis.
+
+* Job Declaration modes and FPPS
+
+** Full-template mode
+
+The miner selects the transactions. The JDC declares them to the JDS. The JDS validates the template and computes:
+
+#+begin_example
+F_job = F_verified
+#+end_example
+
+The ordinary FPPS formula then uses =F_verified=. No fee cap is required.
+
+This is sufficient to implement FPPS with miner-created templates. Template selection and template validation are separate operations.
+
+** Coinbase-only mode
+
+The transaction set remains private. The pool sees the coinbase but cannot verify the claimed fees or transaction validity before a block is found.
+
+One risk-limited policy is:
+
+#+begin_example
+F_cap = min(F_declared, gamma * F_avg)
+
+P_share = (D_credited / D_net) * (R_base + F_cap)
+
+B_surplus = lambda * max(0, F_real - F_cap)
+#+end_example
+
+| Symbol     | Meaning                                                   |
+|------------+-----------------------------------------------------------|
+| =F_declared= | Fees claimed by the miner                                 |
+| =F_avg=      | Pool reference or moving average of recent block fees     |
+| =gamma=      | Fee-cap multiplier                                        |
+| =F_cap=      | Fee amount used in the share calculation                  |
+| =F_real=     | Actual fees in a found valid block                        |
+| =lambda=     | Fraction of verified surplus paid as a bonus, from 0 to 1 |
+| =B_surplus=  | One-off block bonus                                       |
+
+*** Gamma
+
+=gamma= is the Greek letter gamma. Here it is only a configurable multiplier.
+
+#+begin_example
+F_avg = 0.200 BTC
+gamma = 1.4
+
+gamma * F_avg = 0.280 BTC
+#+end_example
+
+The pool will not use more than =0.280 BTC= as the blindly payable fee amount. A larger gamma credits more fees but increases pool exposure.
+
+*** Lambda and max
+
+=lambda= is a multiplier. =lambda = 0.8= means paying 80% of the verified surplus.
+
+=max(0, x)= returns zero when =x= is negative.
+
+#+begin_example
+F_real = 0.400 BTC
+F_cap  = 0.280 BTC
+lambda = 0.8
+
+B_surplus = 0.8 * max(0, 0.400 - 0.280)
+          = 0.096 BTC
+#+end_example
+
+If =F_real <= F_cap=, the bonus is zero. The bonus is paid for the found block, not for every share.
+
+* Missing transactions
+
+In full-template mode, =DeclareMiningJob= contains an ordered list of non-coinbase transaction =wtxid=s.
+
+A transaction is "missing" when it is in the miner's template but absent from the JDS mempool or cache.
+
+1. The JDS compares the declared =wtxid=s with its local transactions.
+2. It sends =ProvideMissingTransactions= with the unknown list positions.
+3. The JDC replies with =ProvideMissingTransactions.Success= and the full transactions.
+4. The JDS verifies each transaction against the declared =wtxid= and position.
+5. It validates the reconstructed template and computes its fees.
+
+This avoids retransmitting transactions already known by both sides while supporting private, recent, or differently relayed transactions.
+
+* Pool risk policies
+
+A risk policy decides when a custom job is accepted, when shares are credited, and how unverifiable fees are priced.
+
+| Issue                         | Full template                         | Coinbase only                         |
+|-------------------------------+---------------------------------------+---------------------------------------|
+| Transaction set known         | Yes                                   | No                                    |
+| Fees verified before payout   | Yes                                   | No                                    |
+| Invalid transactions detected | Yes                                   | No                                    |
+| Main pool risk                | Validation cost and declaration abuse | Paying for invalid or overstated work |
+| FPPS treatment                | Use verified fees                     | Cap or discount declared fees         |
+
+** Full-template policy
+
+Typical controls:
+
+- validate before crediting shares
+- calculate fees independently
+- require pool coinbase outputs
+- rate-limit declarations and missing-transaction data
+- reject malformed, stale, or incomplete jobs
+- cache optimistic shares until job acceptance
+
+The full template removes fee uncertainty but creates CPU, memory, bandwidth, and denial-of-service costs.
+
+** Coinbase-only policy
+
+Possible controls:
+
+- fee cap
+- surplus bonus after a valid block is inspected
+- trusted-miner or reputation requirements
+- delayed settlement or reserves
+- limits on blind-mode hashrate
+- statistical block-withholding monitoring
+
+These controls are needed because the pool pays shares before it can know whether the hidden template is valid. The fee cap limits loss; it does not verify the claim.
+
+* Bitcoin block header
+
+The proof-of-work header is exactly 80 bytes.
+
+| Offset | Size | Bytes                                       |
+|--------+------+---------------------------------------------|
+|      0 |    4 | Version, little-endian                      |
+|      4 |   32 | Previous block hash, wire order             |
+|     36 |   32 | Merkle root, wire order                     |
+|     68 |    4 | Unix time, little-endian                    |
+|     72 |    4 | Compact network target =nBits=, little-endian |
+|     76 |    4 | Nonce, little-endian                        |
+
+#+begin_src rust
+#[repr(C)]
+struct BlockHeaderBytes {
+    version_le: [u8; 4],
+    previous_block_hash: [u8; 32],
+    merkle_root: [u8; 32],
+    time_le: [u8; 4],
+    bits_le: [u8; 4],
+    nonce_le: [u8; 4],
+}
+#+end_src
+
+#+begin_src c
+typedef struct {
+    uint8_t version_le[4];
+    uint8_t previous_block_hash[32];
+    uint8_t merkle_root[32];
+    uint8_t time_le[4];
+    uint8_t bits_le[4];
+    uint8_t nonce_le[4];
+} block_header_bytes;
+#+end_src
+
+The proof-of-work hash is double SHA-256 of these 80 bytes. Displayed Bitcoin hashes use the reverse byte order from their serialized form.
+
+The pool share target is not part of the block header.
+
+* AEAD
+
+AEAD means /Authenticated Encryption with Associated Data/.
+
+It provides:
+
+- confidentiality: ciphertext does not reveal the message
+- integrity and authenticity: modification or forgery is detected
+- authentication of optional unencrypted associated data
+
+Conceptually:
+
+#+begin_example
+ciphertext, tag = encrypt(key, nonce, associated_data, plaintext)
+#+end_example
+
+SV2 uses a Noise handshake to establish keys and authenticate the server. ChaCha20-Poly1305 is the default AEAD cipher for subsequent traffic.
+
+AEAD does not protect a compromised endpoint, hide all traffic timing or sizes, or replace validation of jobs and shares.

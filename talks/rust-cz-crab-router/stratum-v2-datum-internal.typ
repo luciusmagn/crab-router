@@ -40,12 +40,14 @@
   config-colors(
     neutral-lightest: page-fill,
   ),
+  config-common(
+    show-strong-with-alert: false,
+  ),
 )
 
 #title-slide()[
   #align(center + horizon)[
     = Stratum V1, V2, and DATUM
-    #text(size: 0.72em)[Mining jobs and block-template control]
   ]
 ]
 
@@ -55,7 +57,6 @@
 - Who controls a V1 block template #pause
 - DATUM's gateway model #pause
 - Stratum V2's three protocols #pause
-- Why Braiins favors Stratum V2
 
 = Stratum V1
 
@@ -66,9 +67,9 @@
 - *Network target*: proof-of-work threshold for a valid Bitcoin block #pause
 - *Share target*: easier threshold used to measure a miner's work #pause
 - *Share*: valid proof of work for the pool, usually not a valid block #pause
-- *Coinbase transaction*: first transaction; claims the subsidy and fees and carries the extranonce
+- *Coinbase transaction*: first transaction; claims the subsidy and fees and carries the *extranonce*
 
-== Stratum V1 architecture
+== Stratum V1
 
 #align(center + horizon)[
   #grid(
@@ -92,10 +93,10 @@
   )
 
   #v(1.1em)
-  Jobs go right. Shares go left. The pool supplies the template.
+  jobs flow right, shares flow left
 ]
 
-== What V1 does
+== V1 job flow
 
 - Pool builds a block template and derives a mining job #pause
 - `mining.notify` sends the previous block hash, coinbase parts, Merkle branches, version, target bits, and time #pause
@@ -103,7 +104,7 @@
 - Miner returns hashes that meet the pool's easier share target #pause
 - Pool validates the shares and pays for the measured work
 
-== What the miner can change
+== Miner-controlled fields
 
 - The extranonce changes the coinbase transaction #pause
 - That changes the coinbase transaction ID and therefore the Merkle root #pause
@@ -113,7 +114,7 @@
 
 == Pool controls the template
 
-- ASICs do not have a mempool and do not receive the transaction list #pause
+- ASICs dont have mempools#pause
 - The pool's node and template builder select the transactions #pause
 - A miner can point hash rate elsewhere, but cannot edit the current job #pause
 - A few pool operators therefore choose block contents for a large share of Bitcoin's hash rate
@@ -121,16 +122,16 @@
 == V1 limitations
 
 #text(size: 0.82em)[
-  #table(
-    columns: (auto, 1fr),
-    align: left,
-    [*Property*], [*Consequence*],
-    [Pool-built templates], [Transaction selection is concentrated at pools],
-    [JSON messages], [More bytes and parsing than a binary protocol needs],
-    [Several dialects and extensions], [Interoperability depends on implementation details],
-    [No native authentication or encryption], [Jobs and credentials need external protection],
-    [Per-device work construction], [More coinbase and Merkle-path work across the stack],
-  )
+  - Pool-built templates
+    - Pool chooses transactions for all connected hash rate #pause
+  - JSON wire format
+    - More bytes and parsing than a binary protocol needs #pause
+  - Informal dialects and extensions
+    - Compatibility depends on implementation quirks #pause
+  - No native authentication or encryption
+    - Protection has to come from TLS, a VPN, or the network #pause
+  - Coinbase and Merkle work on mining devices
+    - More bandwidth and firmware complexity
 ]
 
 = Template Control
@@ -154,15 +155,16 @@
   )
 
   #v(1em)
-  Both protocols let the miner build the template while the pool tracks shares and pays miners.
+    Miner can built the template in both SV2 & DATUM (must in DATUM), pool tracks shares and pays miners
+
 ]
 
-== Common result
+==
 
-- The miner's Bitcoin node supplies the template #pause
+- Miner's BTC node supplies the template #pause
 - Its mempool and policy determine the transaction set #pause
-- The pool still accounts for shares and pays miners #pause
-- The miner's node can publish a found block
+- Pool still accounts for shares and pays miners #pause
+- Miner's node can publish a found block
 
 = DATUM
 
@@ -224,20 +226,6 @@
 - DATUM defines no path for a pool-supplied template #pause
 - The pool cannot replace the local template without a configuration change #pause
 - This guarantees local control but limits DATUM to that use case
-
-== DATUM scope
-
-#text(size: 0.78em)[
-  #table(
-    columns: (1fr, 1fr),
-    align: left,
-    [*Changed*], [*Still present*],
-    [Miner's node selects transactions], [Stratum V1 between Gateway and ASICs],
-    [Solved blocks submitted locally], [Bitcoin RPC and `getblocktemplate` on the node side],
-    [Encrypted Gateway-to-pool link], [A custom DATUM pool protocol],
-    [Pool accounting without pool work], [Pool protocol still described as evolving],
-  )
-]
 
 = Stratum V2
 
@@ -355,7 +343,7 @@ The Mining Protocol can run alone. Job Declaration is optional, so SV2 does not 
   )
 ]
 
-== Why we prefer Stratum V2
+== Stratum V2 pros
 
 #text(size: 0.86em)[
   - Replaces V1 on the pool link and inside the farm #pause
@@ -366,19 +354,11 @@ The Mining Protocol can run alone. Job Declaration is optional, so SV2 does not 
   - Allows pool jobs and V1 translation during migration
 ]
 
-== DATUM's advantages
+== DATUM's differences
 
 - Existing V1 ASICs work unchanged behind one Gateway #pause
 - Local template construction is mandatory by design #pause
 - Its narrow design suits miners who only want local template control #pause
 - There is no pool-supplied fallback path
-
-== Braiins position
-
-- Braiins engineers co-authored Stratum V2 and implemented parts of it #pause
-- This is not a neutral comparison #pause
-- DATUM fixes pool-controlled transaction selection #pause
-- It also adds another pool protocol while keeping V1 on the ASIC side #pause
-- We would rather deploy the SV2 Mining, Template Distribution, and Job Declaration protocols
 
 == Q&A
