@@ -99,11 +99,11 @@
 
 == V1 job flow
 
-- The pool builds a block template and derives a mining job #pause
+- Pool builds a block template and derives a mining job #pause
 - `mining.notify` sends the previous block hash, coinbase parts, Merkle branches, version, `nBits`, and time #pause
 - Extranonce parameters and the share target are supplied separately #pause
 - The miner constructs the coinbase and Merkle root, then searches nonce, extranonce2, time, and allowed version bits #pause
-- The pool validates submitted shares and accounts for the measured work
+- Pool validates submitted shares and accounts for the measured work
 
 == Miner-controlled fields
 
@@ -111,11 +111,11 @@
 - The new coinbase transaction changes the Merkle root #pause
 - Nonce, time, and permitted version bits provide additional header search space #pause
 - These fields produce many candidate headers from one pool job #pause
-- They do not change the non-coinbase transaction set
+- The non-coinbase transaction set does not change at all
 
 == Pool controls the template
 
-- ASICs do not maintain mempools #pause
+- ASICs don't maintain mempools #pause
 - The pool's node and template builder select the transactions #pause
 - A mining proxy can distribute a job, but cannot replace its transaction set #pause
 - A miner can reject the job or change pools, but cannot modify the current template #pause
@@ -162,10 +162,10 @@
 
 == Miner-created templates
 
-- The miner's Bitcoin node supplies the template #pause
+- Miner's Bitcoin node supplies the template #pause
 - Its mempool and policy determine the transaction set #pause
 - The pool supplies required coinbase outputs and validates shares #pause
-- The miner's node can submit a solved block #pause
+- Miner's node can submit a solved block #pause
 - FPPS additionally requires a credible transaction-fee value for each declared job
 
 = DATUM
@@ -215,21 +215,21 @@
 
 #v(0.45em)
 
-1. The local Bitcoin node builds a block template #pause
-2. The pool provides its payout requirements #pause
-3. The Gateway combines both into a Stratum V1 mining job #pause
+1. Local Bitcoin node builds a block template #pause
+2. Pool provides its payout requirements #pause
+3. DAUTM Gateway combines both into a Stratum V1 mining job #pause
 4. ASICs mine the job and return shares through the Gateway #pause
-5. The pool accounts for the accepted shares #pause
-6. The local Bitcoin node submits a solved block
+5. Pool accounts for the accepted shares #pause
+6. Local Bitcoin node submits a solved block
 
 == DATUM template policy
 
-- The Gateway creates work only from the miner's local node #pause
+- Gateway creates work only from the miner's local node #pause
 - DATUM defines no pool-supplied template path #pause
 - Local template construction is mandatory #pause
 - Existing ASICs continue to use Stratum V1 #pause
-- The node-facing interface remains `getblocktemplate` #pause
-- The Gateway-to-pool protocol is DATUM-specific and described as evolving
+- The node-facing interface is still `getblocktemplate` (GBT) #pause
+- Gateway-to-pool protocol is DATUM-specific and described as "evolving"
 
 = Stratum V2
 
@@ -248,7 +248,8 @@
 
 #v(0.8em)
 
-The Mining Protocol can run alone. Job Declaration is optional, so SV2 does not by itself move template construction to miners.
+The Mining Protocol can run alone. Job Declaration is optional, so SV2 does not force template construction
+by miners.
 
 == SV2 roles
 
@@ -347,7 +348,7 @@ FPPS pays the expected subsidy and transaction fees for each accepted share.
   - $D_"eff"$: difficulty credited to the share #pause
   - $D_"net"$: Bitcoin network difficulty #pause
   - $R_"base"$: block subsidy #pause
-  - $F$: transaction fees assigned to the job
+  - $F$: fee value used for FPPS on this job
 ]
 
 #text(size: 0.86em)[The pool pays before a block is found. It must verify or limit $F$.]
@@ -426,7 +427,7 @@ The pool cannot verify the transaction set before a block is found.
   )
 ]
 
-== Why Stratum V2 is preferable
+== Stratum V2 pros
 
 #text(size: 0.82em)[
   - Replaces V1 on the pool link and can replace it inside the farm #pause

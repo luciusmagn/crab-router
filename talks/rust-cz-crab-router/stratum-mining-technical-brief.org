@@ -31,6 +31,120 @@ Connection state also supplies:
 
 The transaction list is not sent. The Merkle branches commit the miner to the pool-selected transaction set.
 
+* Target and difficulty
+
+A hash is accepted when:
+
+#+begin_example
+hash <= target
+#+end_example
+
+A lower target is harder.
+
+/Speaker wording:/ "The target is the largest hash value we accept. The network target decides whether we found a block; the easier pool target decides whether we found a share."
+
+Difficulty is the inverse representation:
+
+#+begin_example
+D = T1 / target
+#+end_example
+
+A higher difficulty is harder.
+
+/Speaker wording:/ "Difficulty is the inverse representation of the target. A smaller target gives a larger difficulty number, so larger difficulty means harder work."
+
+** Three thresholds with one aggregating proxy
+
+| Difficulty | Set by                          | Meaning                        |
+|------------+---------------------------------+--------------------------------|
+| =D_net=      | Bitcoin consensus through =nBits= | Block threshold                |
+| =D_up=       | Pool                            | Proxy-to-pool share threshold  |
+| =D_down=     | Proxy                           | Miner-to-proxy share threshold |
+
+Normally:
+
+#+begin_example
+D_net > D_up >= D_down
+T_net < T_up <= T_down
+#+end_example
+
+For one hash:
+
+- meeting =T_down= makes it a downstream share
+- meeting =T_up= makes it an upstream share
+- meeting =T_net= makes it a Bitcoin block
+
+Example:
+
+#+begin_example
+D_down = 1,024
+D_up   = 65,536
+#+end_example
+
+About one in 64 downstream shares also meets the upstream target.
+
+A farm may have several downstream difficulty values because the proxy applies vardiff per device. Additional proxy layers can add further targets. Three is the usual count along one path with one aggregating proxy, not a protocol maximum.
+
+/Speaker wording:/ "A hash can pass three checkpoints. The miner submits downstream shares to the proxy. The proxy forwards only the subset meeting upstream pool difficulty. A still smaller subset meets network difficulty and becomes a block."
+
+** Actual share difficulty
+
+A specific hash has an achieved difficulty:
+
+#+begin_example
+D_actual = T1 / hash_value
+#+end_example
+
+A share passes an assigned threshold when:
+
+#+begin_example
+D_actual >= D_assigned
+#+end_example
+
+=D_actual= is measured, not assigned. Interfaces may display it as an apparent fourth difficulty number.
+
+/Speaker wording:/ "Assigned difficulty is the threshold the miner was asked to meet. Actual difficulty describes how good one particular hash happened to be."
+
+* Bitcoin block header
+
+The proof-of-work header is exactly 80 bytes.
+
+| Offset | Size | Bytes                                       |
+|--------+------+---------------------------------------------|
+|      0 |    4 | Version, little-endian                      |
+|      4 |   32 | Previous block hash, wire order             |
+|     36 |   32 | Merkle root, wire order                     |
+|     68 |    4 | Unix time, little-endian                    |
+|     72 |    4 | Compact network target =nBits=, little-endian |
+|     76 |    4 | Nonce, little-endian                        |
+
+#+begin_src rust
+#[repr(C)]
+struct BlockHeaderBytes {
+    version_le: [u8; 4],
+    previous_block_hash: [u8; 32],
+    merkle_root: [u8; 32],
+    time_le: [u8; 4],
+    bits_le: [u8; 4],
+    nonce_le: [u8; 4],
+}
+#+end_src
+
+#+begin_src c
+typedef struct {
+    uint8_t version_le[4];
+    uint8_t previous_block_hash[32];
+    uint8_t merkle_root[32];
+    uint8_t time_le[4];
+    uint8_t bits_le[4];
+    uint8_t nonce_le[4];
+} block_header_bytes;
+#+end_src
+
+The proof-of-work hash is double SHA-256 of these 80 bytes. Displayed Bitcoin hashes use the reverse byte order from their serialized form.
+
+The pool share target is not part of the block header.
+
 * Extranonce and extranonce2
 
 The 32-bit header nonce is too small for modern hardware. The extranonce adds mutable data to the coinbase transaction.
@@ -38,6 +152,10 @@ The 32-bit header nonce is too small for modern hardware. The extranonce adds mu
 #+begin_example
 coinbase = coinb1 || extranonce1 || extranonce2 || coinb2
 #+end_example
+
+/Speaker wording:/ "The pool sends the bytes before and after the extranonce area. Extranonce1 identifies the connection. The miner changes extranonce2. Joining the four byte strings produces the coinbase transaction."
+
+The double bar means byte concatenation, not arithmetic addition.
 
 | Part        | Selected by    | Purpose                               |
 |-------------+----------------+---------------------------------------|
@@ -110,6 +228,8 @@ BIP310 negotiates a bit mask:
 negotiated_mask = miner_mask & server_mask
 #+end_example
 
+/Speaker wording:/ "The miner advertises the bits it can roll, and the server advertises the bits it permits. Bitwise AND keeps only bits allowed by both sides."
+
 The submitted version must satisfy:
 
 #+begin_example
@@ -118,6 +238,8 @@ version_bits & ~negotiated_mask == 0
 nVersion = (job_version & ~negotiated_mask)
          | (version_bits &  negotiated_mask)
 #+end_example
+
+/Speaker wording:/ "The job version is preserved outside the mask. The miner's values are inserted only inside the mask."
 
 Only bits set in the negotiated mask may change. The server can update the mask with =mining.set_version_mask=.
 
@@ -142,178 +264,15 @@ negotiated_mask = 0x18000000
 
 This allows bits 27 and 28 to vary, giving four combinations.
 
-* Target and difficulty
-
-A hash is accepted when:
-
-#+begin_example
-hash <= target
-#+end_example
-
-A lower target is harder. Difficulty is the inverse representation:
-
-#+begin_example
-D = T1 / target
-#+end_example
-
-A higher difficulty is harder.
-
-** Three thresholds with one aggregating proxy
-
-| Difficulty | Set by                          | Meaning                        |
-|------------+---------------------------------+--------------------------------|
-| =D_net=      | Bitcoin consensus through =nBits= | Block threshold                |
-| =D_up=       | Pool                            | Proxy-to-pool share threshold  |
-| =D_down=     | Proxy                           | Miner-to-proxy share threshold |
-
-Normally:
-
-#+begin_example
-D_net > D_up >= D_down
-T_net < T_up <= T_down
-#+end_example
-
-For one hash:
-
-- meeting =T_down= makes it a downstream share
-- meeting =T_up= makes it an upstream share
-- meeting =T_net= makes it a Bitcoin block
-
-Example:
-
-#+begin_example
-D_down = 1,024
-D_up   = 65,536
-#+end_example
-
-About one in 64 downstream shares also meets the upstream target.
-
-A farm may have several downstream difficulty values because the proxy applies vardiff per device. Additional proxy layers can add further targets. Three is the usual count along one path with one aggregating proxy, not a protocol maximum.
-
-** Actual share difficulty
-
-A specific hash has an achieved difficulty:
-
-#+begin_example
-D_actual = T1 / hash_value
-#+end_example
-
-A share passes an assigned threshold when:
-
-#+begin_example
-D_actual >= D_assigned
-#+end_example
-
-=D_actual= is measured, not assigned. Interfaces may display it as an apparent fourth difficulty number.
-
-* FPPS
-
-FPPS means /Full Pay Per Share/. The pool pays the expected subsidy and transaction-fee value of every accepted share, regardless of when the pool finds blocks.
-
-#+begin_example
-P_share = (D_credited / D_net) * (R_base + F_job)
-#+end_example
-
-| Symbol | Meaning | Unit |
-|-
-| =P_share= | Gross expected payout for one accepted share | BTC per share |
-| =D_credited= or =D_eff= | Difficulty credited to the share | Difficulty |
-| =D_net= | Bitcoin network difficulty | Difficulty |
-| =R_base= or =R_subsidy= | Block subsidy, excluding fees | BTC per block |
-| =F_job= or =F= | Fee value assigned to the job | BTC per block |
-
-For a template:
-
-#+begin_example
-fee(tx) = sum(inputs) - sum(outputs)
-F_job  = sum(fee(tx) for every non-coinbase transaction)
-#+end_example
-
-The ratio =D_credited / D_net= is the expected fraction of one block represented by the share.
-
-** Example
-
-#+begin_example
-D_credited = 1,000,000
-D_net      = 100,000,000,000,000
-R_base     = 3.125 BTC
-F_job      = 0.250 BTC
-
-P_share = (1,000,000 / 100,000,000,000,000)
-          * (3.125 + 0.250) BTC
-        = 0.00000003375 BTC
-        = 3.375 satoshis
-#+end_example
-
-This is gross payout before the pool fee. Pools can account in fractional satoshis.
-
-* Job Declaration modes and FPPS
+* Job Declaration modes
 
 ** Full-template mode
 
-The miner selects the transactions. The JDC declares them to the JDS. The JDS validates the template and computes:
-
-#+begin_example
-F_job = F_verified
-#+end_example
-
-The ordinary FPPS formula then uses =F_verified=. No fee cap is required.
-
-This is sufficient to implement FPPS with miner-created templates. Template selection and template validation are separate operations.
+The JDC declares the ordered transaction set. The JDS can request unknown transactions, validate the template, and compute its fees. The JDS learns the transaction set.
 
 ** Coinbase-only mode
 
-The transaction set remains private. The pool sees the coinbase but cannot verify the claimed fees or transaction validity before a block is found.
-
-One risk-limited policy is:
-
-#+begin_example
-F_cap = min(F_declared, gamma * F_avg)
-
-P_share = (D_credited / D_net) * (R_base + F_cap)
-
-B_surplus = lambda * max(0, F_real - F_cap)
-#+end_example
-
-| Symbol     | Meaning                                                   |
-|------------+-----------------------------------------------------------|
-| =F_declared= | Fees claimed by the miner                                 |
-| =F_avg=      | Pool reference or moving average of recent block fees     |
-| =gamma=      | Fee-cap multiplier                                        |
-| =F_cap=      | Fee amount used in the share calculation                  |
-| =F_real=     | Actual fees in a found valid block                        |
-| =lambda=     | Fraction of verified surplus paid as a bonus, from 0 to 1 |
-| =B_surplus=  | One-off block bonus                                       |
-
-*** Gamma
-
-=gamma= is the Greek letter gamma. Here it is only a configurable multiplier.
-
-#+begin_example
-F_avg = 0.200 BTC
-gamma = 1.4
-
-gamma * F_avg = 0.280 BTC
-#+end_example
-
-The pool will not use more than =0.280 BTC= as the blindly payable fee amount. A larger gamma credits more fees but increases pool exposure.
-
-*** Lambda and max
-
-=lambda= is a multiplier. =lambda = 0.8= means paying 80% of the verified surplus.
-
-=max(0, x)= returns zero when =x= is negative.
-
-#+begin_example
-F_real = 0.400 BTC
-F_cap  = 0.280 BTC
-lambda = 0.8
-
-B_surplus = 0.8 * max(0, 0.400 - 0.280)
-          = 0.096 BTC
-#+end_example
-
-If =F_real <= F_cap=, the bonus is zero. The bonus is paid for the found block, not for every share.
+The transaction set is not disclosed. The pool accepts the custom job from its coinbase and other declared constraints, but cannot independently validate its transactions or fees before a block is found.
 
 * Missing transactions
 
@@ -367,46 +326,6 @@ Possible controls:
 
 These controls are needed because the pool pays shares before it can know whether the hidden template is valid. The fee cap limits loss; it does not verify the claim.
 
-* Bitcoin block header
-
-The proof-of-work header is exactly 80 bytes.
-
-| Offset | Size | Bytes                                       |
-|--------+------+---------------------------------------------|
-|      0 |    4 | Version, little-endian                      |
-|      4 |   32 | Previous block hash, wire order             |
-|     36 |   32 | Merkle root, wire order                     |
-|     68 |    4 | Unix time, little-endian                    |
-|     72 |    4 | Compact network target =nBits=, little-endian |
-|     76 |    4 | Nonce, little-endian                        |
-
-#+begin_src rust
-#[repr(C)]
-struct BlockHeaderBytes {
-    version_le: [u8; 4],
-    previous_block_hash: [u8; 32],
-    merkle_root: [u8; 32],
-    time_le: [u8; 4],
-    bits_le: [u8; 4],
-    nonce_le: [u8; 4],
-}
-#+end_src
-
-#+begin_src c
-typedef struct {
-    uint8_t version_le[4];
-    uint8_t previous_block_hash[32];
-    uint8_t merkle_root[32];
-    uint8_t time_le[4];
-    uint8_t bits_le[4];
-    uint8_t nonce_le[4];
-} block_header_bytes;
-#+end_src
-
-The proof-of-work hash is double SHA-256 of these 80 bytes. Displayed Bitcoin hashes use the reverse byte order from their serialized form.
-
-The pool share target is not part of the block header.
-
 * AEAD
 
 AEAD means /Authenticated Encryption with Associated Data/.
@@ -427,151 +346,142 @@ SV2 uses a Noise handshake to establish keys and authenticate the server. ChaCha
 
 AEAD does not protect a compromised endpoint, hide all traffic timing or sizes, or replace validation of jobs and shares.
 
-* Formula speaker notes
+* FPPS
 
-State what a formula measures before reading its symbols.
-
-Useful pronunciations:
-
-- =P_share=: "share payout"
-- =D_eff=: "effective share difficulty"
-- =D_net=: "network difficulty"
-- =R_base=: "block subsidy"
-- =gamma=: "gamma"
-- =lambda=: "lambda"
-- =min=: "the smaller of"
-- =max=: "the larger of"
-
-** Target
+FPPS means /Full Pay Per Share/. The pool pays the expected subsidy and transaction-fee value of every accepted share, regardless of when the pool finds blocks.
 
 #+begin_example
-hash <= target
+P_share = (D_credited / D_net) * (R_base + F_job)
 #+end_example
 
-/Suggested wording:/
+/Speaker wording:/ "This pays one share its expected fraction of a block. The difficulty ratio is the expected block fraction represented by the share. We multiply it by the attempted block value: subsidy plus transaction fees."
 
-"The target is the largest hash value we accept. A lower target is harder. The network target decides whether we found a block; the easier pool target decides whether we found a share."
+Short version: "Expected block fraction multiplied by expected block reward."
 
-** Difficulty
+| Symbol | Meaning | Unit |
+|-
+| =P_share= | Gross expected payout for one accepted share | BTC per share |
+| =D_credited= or =D_eff= | Difficulty credited to the share | Difficulty |
+| =D_net= | Bitcoin network difficulty | Difficulty |
+| =R_base= or =R_subsidy= | Block subsidy, excluding fees | BTC per block |
+| =F_job= or =F= | Fee value the pool uses for this job's FPPS calculation | BTC per block |
+
+For a template:
 
 #+begin_example
-D = T1 / target
+fee(tx) = sum(inputs) - sum(outputs)
+F_job  = sum(fee(tx) for every non-coinbase transaction)
 #+end_example
 
-/Suggested wording:/
+In full-template mode, =F_job= is this complete verified fee total, not a selected portion of it. The share receives only the fraction produced by =D_credited / D_net=.
 
-"Difficulty is the inverse representation of the target. A smaller target gives a larger difficulty number, so larger difficulty means harder work."
+In coinbase-only mode, the pool may use =F_cap= instead because the complete transaction set is hidden.
 
-For an aggregating proxy:
+The ratio =D_credited / D_net= is the expected fraction of one block represented by the share.
 
-"A hash can pass three checkpoints. The miner submits downstream shares to the proxy. The proxy forwards only the subset meeting upstream pool difficulty. A still smaller subset meets network difficulty and becomes a block."
-
-** Coinbase construction
+** Example
 
 #+begin_example
-coinbase = coinb1 || extranonce1 || extranonce2 || coinb2
+D_credited = 1,000,000
+D_net      = 100,000,000,000,000
+R_base     = 3.125 BTC
+F_job      = 0.250 BTC
+
+P_share = (1,000,000 / 100,000,000,000,000)
+          * (3.125 + 0.250) BTC
+        = 0.00000003375 BTC
+        = 3.375 satoshis
 #+end_example
 
-/Suggested wording:/
+/Speaker wording:/ "The share represents one hundred-millionth of the expected work for a block. The block is worth 3.375 bitcoin. Multiplying them gives 3.375 satoshis of gross expected payout."
 
-"The pool sends the bytes before and after the extranonce area. Extranonce1 identifies the connection. The miner changes extranonce2. Joining those four byte strings produces the coinbase transaction. Changing extranonce2 changes the coinbase transaction ID, Merkle root, and block header."
-
-The double bar means byte concatenation, not arithmetic addition.
-
-** Version-rolling mask
-
-#+begin_example
-negotiated_mask = miner_mask & server_mask
-#+end_example
-
-/Suggested wording:/
-
-"The miner advertises the bits it can roll, and the server advertises the bits it permits. Bitwise AND keeps only bits allowed by both sides."
-
-#+begin_example
-nVersion = (job_version & ~mask) | (version_bits & mask)
-#+end_example
-
-/Suggested wording:/
-
-"The job version is preserved outside the mask. The miner's values are inserted only inside the mask. Signalling and policy bits excluded by the server remain unchanged."
-
-** Basic FPPS
-
-#+begin_example
-P_share = (D_eff / D_net) * (R_base + F)
-#+end_example
-
-/Suggested wording:/
-
-"This pays one share its expected fraction of a block. The difficulty ratio tells us what fraction of the expected work for one network block the share represents. We multiply that fraction by the attempted block value: subsidy plus transaction fees."
-
-Short version:
-
-"Expected block fraction multiplied by expected block reward."
-
-For the numerical example:
-
-"The share represents one hundred-millionth of the expected work for a block. The block is worth 3.375 bitcoin. Multiplying them gives 3.375 satoshis of gross expected payout."
+This is gross payout before the pool fee. Pools can account in fractional satoshis.
 
 ** Full-template FPPS
 
+The miner selects the transactions. The JDC declares them to the JDS. The JDS validates the template and computes:
+
 #+begin_example
-P_share = (D_eff / D_net) * (R_base + F_verified)
+F_job = F_verified
 #+end_example
 
-/Suggested wording:/
+The ordinary FPPS formula then uses =F_verified=. No fee cap is required.
 
-"This is ordinary FPPS using a verified fee value. The miner selected the transactions, but the JDS received and validated them and calculated their fees. The pool can verify the template without constructing it."
+/Speaker wording:/ "This is ordinary FPPS using a verified fee value. The miner selected the transactions, but the JDS received and validated them and calculated their fees. The pool can verify the template without constructing it."
 
-Main point:
+Main point: "Miner selection and pool validation are separate operations."
 
-"Miner selection and pool validation are separate operations."
+This is sufficient to implement FPPS with miner-created templates.
 
-** Coinbase-only fee cap
+** Coinbase-only FPPS
+
+The transaction set remains private. The pool sees the coinbase but cannot verify the claimed fees or transaction validity before a block is found.
+
+*** Fee cap
 
 #+begin_example
 F_cap = min(F_declared, gamma * F_avg)
 #+end_example
 
-/Suggested wording:/
+/Speaker wording:/ "The pool cannot inspect the hidden transactions, so it pays the smaller of the miner's fee claim and a cap based on recent network fees."
 
-"The pool cannot inspect the hidden transactions, so it pays the smaller of the miner's fee claim and a cap based on recent network fees."
+| Symbol | Meaning |
+|-
+| =F_declared= | Fees claimed by the miner |
+| =F_avg= | Pool reference or moving average of recent block fees |
+| =gamma= | Fee-cap multiplier |
+| =F_cap= | Fee amount used in the share calculation |
 
-For gamma:
+*** Gamma
 
-"Gamma is only the cap multiplier. Gamma equal to 1.4 means the pool credits at most 140 percent of its recent average fee value. It limits exposure; it does not prove the claim."
-
-** Coinbase-only share payout
+=gamma= is the Greek letter gamma. Here it is only a configurable multiplier.
 
 #+begin_example
-P_share = (D_eff / D_net) * (R_base + F_cap)
+F_avg = 0.200 BTC
+gamma = 1.4
+
+gamma * F_avg = 0.280 BTC
 #+end_example
 
-/Suggested wording:/
+/Speaker wording:/ "Gamma equal to 1.4 means the pool credits at most 140 percent of its recent average fee value. It limits exposure; it does not prove the claim."
 
-"The ordinary share calculation remains the same, but the unverifiable fee claim is replaced with the capped fee value."
+The pool will not use more than =0.280 BTC= as the blindly payable fee amount. A larger gamma credits more fees but increases pool exposure.
 
-** Surplus bonus
+*** Share payout
+
+#+begin_example
+P_share = (D_credited / D_net) * (R_base + F_cap)
+#+end_example
+
+/Speaker wording:/ "The ordinary share calculation remains the same, but the unverifiable fee claim is replaced with the capped fee value."
+
+*** Surplus bonus
 
 #+begin_example
 B_surplus = lambda * max(0, F_real - F_cap)
 #+end_example
 
-/Suggested wording:/
+/Speaker wording:/ "After a valid block is found, the pool can inspect its real fees. We subtract the amount already covered by the cap. Max prevents a negative bonus. Lambda chooses what fraction of the remaining surplus is paid."
 
-"After a valid block is found, the pool can inspect its real fees. We subtract the fee amount already covered by the cap. Max prevents a negative bonus. Lambda chooses what fraction of the remaining surplus is paid."
+| Symbol | Meaning |
+|-
+| =F_real= | Actual fees in a found valid block |
+| =lambda= | Fraction of verified surplus paid, from 0 to 1 |
+| =B_surplus= | One-off block bonus |
 
-Read it in three steps:
+=lambda = 0.8= means paying 80% of the verified surplus. =max(0, x)= returns zero when =x= is negative.
 
-1. Calculate =F_real - F_cap=.
-2. Replace a negative result with zero.
-3. Multiply by =lambda=.
+#+begin_example
+F_real = 0.400 BTC
+F_cap  = 0.280 BTC
+lambda = 0.8
 
-For the example:
+B_surplus = 0.8 * max(0, 0.400 - 0.280)
+          = 0.096 BTC
+#+end_example
 
-"The block has 0.12 bitcoin more fees than the cap covered. Lambda is 0.8, so the miner receives 80 percent of that surplus: 0.096 bitcoin. This is a one-off block bonus, not an addition to every share."
+/Speaker wording:/ "The block has 0.12 bitcoin more fees than the cap covered. Lambda is 0.8, so the miner receives 80 percent of that surplus: 0.096 bitcoin."
 
-** FPPS conclusion
+If =F_real <= F_cap=, the bonus is zero. The bonus is paid for the found block, not for every share.
 
-"Full-template mode lets the pool verify fees before paying shares, so FPPS works directly. Coinbase-only mode hides the transactions, so the pool needs a fee cap or another risk policy. The limitation comes from missing information, not from miner-created templates themselves."
+FPPS conclusion: "Full-template mode verifies fees before shares are paid. Coinbase-only mode hides the transactions, so the pool needs a fee cap or another risk policy."

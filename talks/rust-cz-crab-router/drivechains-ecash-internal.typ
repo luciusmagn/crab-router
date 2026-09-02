@@ -68,11 +68,11 @@
 - The two-way peg problem #pause
 - BIP 300 hashrate escrows #pause
 - BIP 301 blind merged mining #pause
-- Paul Sztorc's planned eCash fork
+- Paul Sztorc's planned eCash fork, CUSF, and mining compatibility
 
 = Drivechains
 
-== Three separate mechanisms
+== The three bois
 
 #align(center + horizon)[
   #grid(
@@ -92,9 +92,10 @@
       #text(size: 0.72em)[A separate L1 fork that plans to enable both]
     ], fill: fork-fill),
   )
+]
 
-  #v(1em)
-  They compose, but they solve different problems.
+#place(bottom + center, dy: -50pt)[
+  #text(size: 0.76em)[So far, eCash has attracted far less controversy than BIP 110.]
 ]
 
 == Proposal status
@@ -113,6 +114,7 @@
   - *Peg-out*: destroy or lock the sidechain balance and release coins on L1 #pause
   - *Treasury UTXO*: the single L1 output holding one sidechain's locked funds #pause
   - *CTIP*: the cached txid and output index of the current treasury UTXO #pause
+    - Current Treasury Index Pointer #pause
   - *Withdrawal bundle*: one L1 transaction aggregating many sidechain peg-outs #pause
   - *Blind merged mining*: buying an L1 commitment to an L2 block without asking the L1 miner to validate that L2
 ]
@@ -144,7 +146,7 @@
   #text(size: 0.78em)[Deposits move value right. Approved withdrawal bundles move value left.]
 ]
 
-== Control moves to future blocks
+== Withdrawal approval by block voting
 
 #align(center + horizon)[
   #grid(
@@ -162,7 +164,7 @@
   )
 
   #v(0.9em)
-  BIP 300 removes fixed keyholders. It gives withdrawal control to whoever builds enough future block templates.
+  BIP 300 replaces fixed-keyholder approval with approval accumulated across future mainchain block templates.
 ]
 
 = BIP 300
@@ -175,7 +177,7 @@
 - Bitcoin nodes enforcing BIP 300 track this state #pause
 - They do not validate the sidechain's transactions or ledger
 
-== Six messages
+== messages
 
 #align(center + horizon)[
   #grid(
@@ -308,24 +310,24 @@
 
 Under ordinary pooled mining, the pool votes. An ASIC owner's fraction of hashrate is not independently represented on-chain.
 
-== The delay is the defense
+== Withdrawal approval properties
 
 #compact[
-  - A withdrawal hash must remain visible while its score grows
-    - One block cannot instantly drain the treasury #pause
+  - A withdrawal hash remains in the candidate set while its score changes
+    - A withdrawal cannot reach approval in one block #pause
   - L1 does not verify sidechain state or a fraud proof
-    - Enough approving templates can authorize an invalid withdrawal #pause
-  - Miners may abstain, downvote, or censor the final M6
-    - Peg-out liveness is not guaranteed #pause
-  - Monitoring can expose a bad bundle
-    - Detection does not cryptographically stop it
+    - Sufficient approving templates can make a sidechain-invalid withdrawal eligible #pause
+  - Miners may abstain, downvote, or omit the final M6
+    - A valid peg-out may remain pending #pause
+  - Monitoring can identify a sidechain-invalid bundle
+    - Identification does not change its score or block eligibility
 ]
 
 == Bridge, not block production
 
 - BIP 300 defines sidechain slots and the two-way peg #pause
 - It does not select or order sidechain blocks #pause
-- It does not require one particular sidechain consensus #pause
+- Doesn't require one particular sidechain consensus either #pause
 - BIP 301 supplies the proposed block-production market
 
 = BIP 301
@@ -399,19 +401,19 @@ Under ordinary pooled mining, the pool votes. An ASIC owner's fraction of hashra
 == One BMM round
 
 #text(size: 0.8em)[
-  1. A sidechain node constructs a candidate block and its hash, `h*` #pause
-  2. The bidder broadcasts an L1 transaction naming the slot, `h*`, and previous L1 block #pause
-  3. Its transaction fee is the bid to the mainchain miner #pause
-  4. The miner includes at most one matching BMM Accept per slot in the coinbase #pause
-  5. Sidechain nodes validate the candidate and either connect it or reject it
+    1. A sidechain node constructs a candidate block and its hash, `h*` (hash of proposed sidechain block) #pause
+    2. The bidder broadcasts an L1 transaction naming the slot, `h*`, and previous L1 block #pause
+    3. Its transaction fee is the bid to the mainchain miner #pause
+    4. The miner includes at most one matching BMM Accept per slot in the coinbase #pause
+    5. Sidechain nodes validate the candidate and either connect it or reject it
 ]
 
 == Blindness boundary
 
 - Mainchain miner sees the sidechain slot, `h*`, and L1 fee #pause
-- It need not run the sidechain node or inspect sidechain transactions #pause
+- No need to the sidechain node or inspect sidechain transactions #pause
 - Sidechain nodes still apply every sidechain validation rule #pause
-- An invalid winning candidate buys an empty round; it does not become valid state #pause
+- If the winning candidate is invalid, no sidechain block is added for that round #pause
 - The miner still receives the L1 fee
 
 == BIP 300 and 301 together
@@ -433,10 +435,10 @@ Under ordinary pooled mining, the pool votes. An ASIC owner's fraction of hashra
   )
 
   #v(1em)
-  BMM anchors the L2 block sequence. It does not validate or secure the peg-out bundle.
+  blind mining commits the L2 block sequence, BIP 300 controls eligibility of the L1 withdrawal tx
 ]
 
-== Failure boundaries
+== Outcomes in selected cases
 
 #compact[
   - A template builder ignores BMM requests
@@ -469,7 +471,7 @@ Under ordinary pooled mining, the pool votes. An ASIC owner's fraction of hashra
     flow-arrow,
     flow-box([
       *BTC* \
-      #text(size: 0.7em)[existing network continues]
+      #text(size: 0.7em)[network and rules continue]
     ], fill: l1-fill),
     flow-arrow,
     flow-box([
@@ -481,54 +483,21 @@ Under ordinary pooled mining, the pool votes. An ASIC owner's fraction of hashra
 
 #v(0.65em)
 
-- Advertised target: BTC block *~963,648* #pause
+- Planned target: BTC block *~963,648* #pause
 - Current estimate: *22 August 2026* #pause
-- Planned SHA-256d chain; Bitcoin itself is unaffected #pause
-- This is not Chaumian eCash, Cashu, or the existing XEC network
+- Planned SHA-256d chain; it does not change BTC consensus rules or the BTC ledger
 
-== Fork rules
+== Core Untouched Soft Fork
 
-#align(center + horizon)[
-  #grid(
-    columns: (1fr, 1fr),
-    column-gutter: 18pt,
-    align: top,
-    flow-box([
-      *Fork bootstrap* \
-      #text(size: 0.7em)[One-time minimum difficulty \
-      New network magic, seeds, and name \
-      Optional transaction replay-control byte]
-    ], fill: fork-fill),
-    flow-box([
-      *CUSF-enforced rules* \
-      #text(size: 0.7em)[BIP 300 and BIP 301 \
-      Project-described 400 kB block cap]
-    ], fill: bridge-fill),
-  )
-
-  #v(0.8em)
-  The project intends to keep the remaining L1 code close to upstream Bitcoin Core.
-]
-
-== Ledger distribution
-
-- Ordinary pre-fork BTC UTXOs are mirrored as ECX at 1:1 #pause
-- The corresponding private keys control the coins on both chains #pause
-- Spending ECX does not spend BTC, once replay protection is used #pause
-- The Satoshi Half-Airdrop reallocates about 550,000 ECX associated with "Patoshi" outputs #pause
-- That reallocation changes only the new chain's ledger
-
-== Difficulty reset
-
-#text(size: 0.84em)[
-  - The fork inherits Bitcoin's history, but not its hashrate
-    - Keeping Bitcoin's difficulty would leave the new chain nearly stalled #pause
-  - 963,648 is exactly $478 times 2,016$
-    - The target is a Bitcoin difficulty-period boundary #pause
-  - eCash plans one period at minimum difficulty
-    - Early blocks can arrive quickly with little proof of work #pause
-  - Normal retargeting resumes after 2,016 eCash blocks
-    - Security and block cadence seek a new equilibrium
+#compact[
+  - CUSF keeps the added validation rules in a separate program
+    - The Core-compatible node retains its existing validation code #pause
+  - The enforcer reads blocks through RPC and ZMQ
+    - If a block violates the added rules, it calls `invalidateblock` #pause
+  - A miner using CUSF builds templates that satisfy the same added rules
+    - Otherwise its own enforcer rejects the resulting block #pause
+  - Nodes without the enforcer continue applying their existing rules
+    - CUSF is still a soft fork: enforcing nodes accept a subset of base-valid blocks
 ]
 
 == CUSF stack
@@ -557,9 +526,79 @@ Under ordinary pooled mining, the pool votes. An ASIC owner's fraction of hashra
 
 #v(0.7em)
 
-#text(size: 0.86em)[CUSF leaves the rules outside Bitcoin Core's source tree. They are still consensus rules for nodes that run the enforcer.]
+#text(size: 0.86em)[CUSF leaves the added rules outside the node's source tree. Operators running the enforcer treat those rules as consensus.]
 
-== Advertised sidechains
+== Fork rules
+
+#align(center + horizon)[
+  #grid(
+    columns: (1fr, 1fr),
+    column-gutter: 18pt,
+    align: top,
+    flow-box([
+      *Fork bootstrap* \
+      #text(size: 0.7em)[One-time minimum difficulty \
+      New network magic, seeds, and name \
+      Optional transaction replay-control byte]
+    ], fill: fork-fill),
+    flow-box([
+      *CUSF-enforced rules* \
+      #text(size: 0.7em)[BIP 300 and BIP 301 \
+      Planned 400 kB block cap]
+    ], fill: bridge-fill),
+  )
+
+  #v(0.8em)
+  The project intends to keep the remaining L1 code close to upstream Bitcoin Core.
+]
+
+== Ledger distribution
+
+- Ordinary pre-fork BTC UTXOs are mirrored as ECX at 1:1 #pause
+- The corresponding private keys control the coins on both chains #pause
+- Spending ECX does not spend BTC, once replay protection is used #pause
+- The Satoshi Half-Airdrop reallocates about 550,000 ECX associated with "Patoshi" outputs #pause
+- That reallocation changes only the new chain's ledger
+
+== Braiins Hashpower and ECX
+
+#compact[
+  - Similar to BCash
+  - Existing BTC delivery does not change
+    - eCash is a separate chain with separate pool jobs and payouts #pause
+  - Hashpower can route bought SHA-256 hashrate to a custom destination pool
+    - The pool must speak Stratum V1, report `extranonce2_size >= 7`, and accept `mining.authorize` #pause
+  - The ECX pool builds the templates
+    - It chooses BIP 300 votes and BMM Accepts; Hashpower routes the proof of work #pause
+  - Hashpower does not need to interpret BIP 300 or BIP 301
+    - Under the published interface, it can mine ECX through a compatible ECX pool
+]
+
+== Fork-day
+
+#compact[
+  - ECX starts its first 2,016 blocks at minimum network difficulty (maybe)
+    - The destination pool and mining firmware must accept jobs at that target #pause
+  - SoloFork tested a Braiins OS miner against its L2L signet endpoint
+    - It reported a BOSminer assertion when share difficulty exceeded network difficulty #pause
+    - https://solofork.com/blog/bosminer-low-diff-panic
+]
+
+== Public pool activity
+
+#compact[
+  - Major pool accounts
+    - No eCash-specific announcement found from AntPool, F2Pool, ViaBTC, Foundry, Braiins, SpiderPool, or Luxor as of 3 August 2026 #pause
+  - SoloFork
+    - Independent CKpool-based ECX solo pool
+    - Uses an L2L signet endpoint for Stratum integration testing
+    - Plans to switch its public endpoint to ECX mainnet at launch
+    - A found block pays the miner directly, minus a 2% operator output #pause
+  - LayerTwo Labs also publishes SimplePool
+    - It is Stratum V1 pool software, not really a public commitment from a pool
+]
+
+== Planned sidechains
 
 #text(size: 0.78em)[
   #grid(
@@ -576,34 +615,6 @@ Under ordinary pooled mining, the pool votes. An ASIC owner's fraction of hashra
       - *CoinShift*: decentralized exchange
       - *Photon*: post-quantum signatures
     ],
-  )
-]
-
-#v(0.7em)
-
-This is the project's current test and launch set; implementation maturity varies.
-
-= Assessment
-
-== Trust and scope
-
-#align(center + horizon)[
-  #grid(
-    columns: (1fr, 1fr, 1fr),
-    column-gutter: 14pt,
-    align: top,
-    flow-box([
-      *BIP 300* \
-      #text(size: 0.68em)[Removes a fixed federation, but replaces it with delayed hashrate custody]
-    ], fill: bridge-fill),
-    flow-box([
-      *BIP 301* \
-      #text(size: 0.68em)[Lets miners sell L2 commitments without validating L2 state]
-    ], fill: miner-fill),
-    flow-box([
-      *eCash* \
-      #text(size: 0.68em)[Runs the experiment on a separate asset and security budget]
-    ], fill: fork-fill),
   )
 ]
 
