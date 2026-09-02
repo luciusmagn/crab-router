@@ -120,8 +120,8 @@
 
   #v(0.8em)
   #compact[
-    Difficulty retargets every 2016 blocks from the period's first and last timestamps. \
-    The boundary interval drops out of the calculation.
+      Every 2016 blocks, difficulty gets recalculated from the timestamps of the first and last block in the period. \
+      The gap between the last block of one period and the first block of the next isn't measured.
   ]
 ]
 
@@ -141,8 +141,8 @@
 
   #v(0.85em)
   #compact[
-    A majority-hashrate attacker repeats this at each retarget. \
-    Difficulty reaches the minimum in roughly 38 days; blocks then accelerate without bound.
+      A miner with most of the hashrate can do this at every retarget. \
+      Difficulty bottoms out in about 38 days, and from there the attacker can mine as fast as it wants.
   ]
 ]
 
@@ -164,7 +164,7 @@
   ]
 
   #v(0.7em)
-  #text(size: 0.76em)[The first rule caps the timewarp at two hours. The second prevents a negative period (Murch-Zawy).]
+  #text(size: 0.76em)[The first rule allows at most two hours of backdating per retarget, which is what caps timewarp. The second rule keeps the period from having a negative length (Murch-Zawy).]
 ]
 
 = Validation time
@@ -178,7 +178,7 @@
     align: center + horizon,
     flow-box([*Prepare UTXOs*], fill: neutral-fill),
     flow-arrow,
-    flow-box([*Mine pathological transactions*], fill: sigop-fill),
+      flow-box([*Mine a block full of slow transactions*], fill: sigop-fill),
     flow-arrow,
     flow-box([*Competitors validate slowly*], fill: coinbase-fill),
   )
@@ -186,7 +186,7 @@
   #v(0.8em)
   #compact[
     A sigop is a `CHECKSIG` or `CHECKMULTISIG` operation in Bitcoin Script. \
-    Legacy Script can concentrate expensive checks inside a few transactions.
+      Legacy Script lets a few transactions carry a huge number of these checks.
   ]
 ]
 
@@ -195,9 +195,9 @@
 #compact[
   - About 10 minutes on a Core i5-12500H in a 2026 test #pause
   - About 29 minutes in a comparable test on an older Xeon #pause
-  - The attacker prepares suitable UTXOs in earlier blocks #pause
-  - A miner starts the next block while competitors validate the slow block #pause
-  - Under some conditions, the head start can cover the preparation cost
+    - The attacker sets up the UTXOs it needs in earlier blocks #pause
+    - While everyone else is still validating the slow block, the attacker starts mining the next one #pause
+    - If the head start is worth more than the setup cost, the attack pays for itself
 ]
 
 == 2500 per transaction
@@ -215,9 +215,9 @@
 ]
 
 #compact[
-  Count each input's `scriptSig`, spent `scriptPubKey`, and P2SH `redeemScript`. \
-  This BIP16-style count includes unreachable opcodes. \
-  The limit cuts worst-case validation time by roughly 40 times.
+    Count sigops in each input's `scriptSig`, the output script it spends, and any P2SH `redeemScript`. \
+    Like BIP 16, this counts even code that can never run. \
+    The limit makes the worst-case block about 40 times faster to validate.
 ]
 
 = Merkle trees
@@ -241,19 +241,20 @@
 
   #v(0.9em)
   #compact[
-    An inner-node preimage is 32 + 32 = 64 bytes. \
-    A 64-byte witness-stripped transaction can occupy either interpretation.
+      An inner node is the hash of two 32-byte hashes: 64 bytes in, 32 out. \
+      A transaction with its witness stripped can also be exactly 64 bytes, \
+      so the same blob can be read as either one.
   ]
 ]
 
 == Merkle proof rule
 
 #compact[
-  - Ambiguous leaves can forge an apparent SPV inclusion with less work than a SHA256 collision #pause
-  - BIP 54 makes transactions with exactly 64 witness-stripped bytes invalid #pause
-  - Current Bitcoin Core policy already excludes them from relay and block templates #pause
-  - The last one appeared on-chain in 2016 #pause
-  - Present-day 64-byte transactions create anyone-can-spend or provably unspendable outputs
+    - With an ambiguous leaf, someone can fake a proof that a transaction is in a block, for far less work than breaking SHA256 #pause
+    - BIP 54 bans transactions that are exactly 64 bytes once the witness is stripped #pause
+    - Bitcoin Core already refuses to relay them or put them in block templates #pause
+    - The last one hit the chain in 2016 #pause
+    - A 64-byte transaction these days is either anyone-can-spend or can't be spent at all
 ]
 
 = Coinbase uniqueness
@@ -271,11 +272,11 @@
 == Future duplicate height
 
 #compact[
-  - Some pre-BIP34 coinbases begin with bytes that encode future heights #pause
-  - The earliest duplicate candidate occurs at height *1,983,702* #pause
-  - Explicit BIP30 validation would resume before that height #pause
-  - BIP30 needs the UTXO set and complicates designs such as Utreexo #pause
-  - A height-bound coinbase provides permanent uniqueness
+    - Some pre-BIP34 coinbases start with bytes that happen to encode a future block height #pause
+    - The first possible duplicate lands at height *1,983,702* #pause
+    - Full BIP30 checking has to come back before then #pause
+    - BIP30 needs the whole UTXO set, which gets in the way of things like Utreexo #pause
+    - Tying each coinbase to its own block height kills duplicates for good
 ]
 
 == Height-bound coinbase
@@ -297,8 +298,9 @@
 
   #v(0.8em)
   #compact[
-    `nSequence` activates the locktime. \
-    `nLockTime = N - 1` becomes final at height `N`, binding the transaction to that block height.
+      `nSequence` is what switches the locktime on. \
+      With `nLockTime = N - 1`, the transaction only becomes valid at height `N`, \
+      so the coinbase fits in exactly one block: its own.
   ]
 ]
 
@@ -310,7 +312,7 @@
   - Upgraded nodes enforce all four rules after activation #pause
   - Standard wallet transactions fit the new limits #pause
   - Script tooling enforces the 2500 legacy-sigop ceiling #pause
-  - Transaction builders pad a 64-byte stripped transaction #pause
+    - Wallets and transaction builders should pad a transaction that would come out to exactly 64 bytes #pause
   - SPV, bridge, and sidechain code gets unambiguous Merkle proofs #pause
   - Utreexo implementations can skip future BIP30 validation
 ]
@@ -334,9 +336,9 @@
 
   #v(0.7em)
   #text(size: 0.76em)[
-    The pool sets `nLockTime = block height - 1` and `nSequence != 0xffffffff`. \
-    It uses `curtime` or `mintime` from `getblocktemplate`. \
-    Pools continue rolling extranonce in `scriptSig`.
+      Pool software sets `nLockTime` to one below the block height, with any `nSequence` other than `0xffffffff`. \
+      Take the block timestamp from `curtime` or `mintime` in `getblocktemplate`. \
+      Everything else, like rolling the extranonce, stays as it is.
   ]
 ]
 
@@ -347,18 +349,18 @@
   - Bitcoin Core 30.0+ policy enforces the 2500-sigop limit #pause
   - Bitcoin Core 0.16.1+ policy excludes 64-byte stripped transactions #pause
   - Pool software adds the coinbase locktime and sequence fields #pause
-  - Mainnet activation mechanism and parameters remain unselected
+    - Nobody has picked how or when mainnet activation happens yet
 ]
 
 == Takeaways
 
 #compact[
-  - BIP 54 packages four consensus fixes #pause
-  - Boundary timestamps close timewarp #pause
-  - Per-transaction sigops bound validation cost #pause
-  - A 64-byte ban removes the Merkle ambiguity #pause
-  - Coinbase locktime guarantees unique future txids #pause
-  - Pools implement the only mining-specific change
+    - Four fixes in one BIP #pause
+    - The timestamp rules close the timewarp hole #pause
+    - The sigop limit keeps the worst-case block cheap to validate #pause
+    - Banning 64-byte transactions removes the Merkle ambiguity #pause
+    - The coinbase locktime makes duplicate txids impossible #pause
+    - Pools only need to change the coinbase
 ]
 
 == Q&A
