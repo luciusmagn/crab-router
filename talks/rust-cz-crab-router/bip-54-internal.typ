@@ -146,6 +146,14 @@
   ]
 ]
 
+== Why it's bad
+
+#compact[
+  - Subsidy is paid per block, so faster blocks mean the remaining coins get mined way ahead of schedule #pause
+  - Every node in the network has to download and validate the block storm #pause
+  - And with almost no work behind the chain, rewriting history gets cheap too
+]
+
 == Timestamp constraints
 
 #align(center + horizon)[
@@ -247,10 +255,18 @@
   ]
 ]
 
+== Why it's bad
+
+#compact[
+  - Light wallets don't see whole blocks, they trust merkle proofs #pause
+  - An attacker can craft a proof that shows a transaction in a block that never contained it #pause
+  - Anyone who accepts proofs can be fooled: SPV wallets, exchanges, bridges #pause
+  - And it costs far less work than a real SHA256 attack
+]
+
 == Merkle proof rule
 
 #compact[
-    - With an ambiguous leaf, someone can fake a proof that a transaction is in a block, for far less work than breaking SHA256 #pause
     - BIP 54 bans transactions that are exactly 64 bytes once the witness is stripped #pause
     - Bitcoin Core already refuses to relay them or put them in block templates #pause
     - The last one hit the chain in 2016 #pause
@@ -277,6 +293,15 @@
     - Full BIP30 checking has to come back before then #pause
     - BIP30 needs the whole UTXO set, which gets in the way of things like Utreexo #pause
     - Tying each coinbase to its own block height kills duplicates for good
+]
+
+== Why it's bad
+
+#compact[
+  - A txid is a transaction's identity: every outpoint and UTXO entry is keyed by it #pause
+  - Two different transactions with the same txid can't be told apart by the chain #pause
+  - A duplicate coinbase would fight over the same outpoints as the original #pause
+  - Spending those outputs becomes ambiguous, and that kind of ambiguity is how chains split
 ]
 
 == Height-bound coinbase
